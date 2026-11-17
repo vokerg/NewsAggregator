@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "description": "Unconfirmed user-dictated source candidates. NOT an enabled or validated source registry.",
+  "candidates": [
+    {
+      "candidate_id": "spoken-source-001",
+      "verbatim_transcription": "DARPA Tool дальше NVIDIA IO русская версия",
+      "display_name": null,
+      "canonical_url": null,
+      "feed_url": null,
+      "language_hint": "ru",
+      "status": "needs_identification",
+      "enabled": false,
+      "notes": "The dictated phrase is ambiguous and may contain transcription errors or several entities. Do not infer a website, RSS feed or political labels until identified."
+    }
+  ]
+}

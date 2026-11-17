@@ -1,0 +1,22 @@
+# Local development secrets and environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.idea/
+.vscode/
+.DS_Store
+
+# Do not accidentally publish private full-text captures or runtime data
+data/private/
+data/raw-captures/
+data/runtime/
+secrets/
+*.key
+*.pem
