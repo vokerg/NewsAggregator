@@ -1,0 +1,9 @@
+{
+  "https://news.example.org/rss": "rss.xml",
+  "https://news.example.org/news": "index.html",
+  "https://news.example.org/news?page=2": "index-page2.html",
+  "https://news.example.org/stories/one?utm_source=rss": "body.html",
+  "https://news.example.org/stories/two": "body.html",
+  "https://news.example.org/stories/three": "body.html",
+  "https://news.example.org/stories/four": "body.html"
+}
