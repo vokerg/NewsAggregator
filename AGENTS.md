@@ -22,6 +22,14 @@ Read, in order: README.md, PROJECT_BIBLE.md, docs/ARCHITECTURE.md, docs/EXPERIME
 
 Do **not** implement or require an LLM summary of each individual ingested article in the initial version. The reader should offer the available original article body, metadata and direct publisher URL. A per-item summary is only a potential future research experiment and needs a separate user request. This is distinct from the planned thematic/daily **multi-article** synthesis for a selected media perspective; do not remove that requirement.
 
+## Frontend architecture is now decided (2026-11-18)
+
+- **Angular web application** is the primary client, designed **mobile-first**, responsive up to large desktops. Native iOS/Android apps are out of initial scope; PWA installation is the intended mobile experience, but do not claim installability until manifest, icons, service worker, HTTPS deployment and real-device checks are verified.
+- **Static-first, commit-driven:** initial published news/read models are generated from committed public data **in this repository**. Prefer a versioned static JSON manifest + paginated/date-partitioned projections; Angular reads these assets through a data access abstraction, without a runtime read API initially. The data producer owns commits, and the frontend is read-only. Never place GitHub write tokens or OpenAI keys in browser bundles.
+- Follow [docs/FRONTEND.md](docs/FRONTEND.md): supported Angular 22 line (at decision time), strict standalone architecture, feature-first layout, route-level lazy loading, small single-purpose components, external templates/styles, OnPush and Signals/computed, inject(), accessible semantic HTML, keyboard and touch support, typed repository interface, error/loading/empty states, and adjacent unit tests. Do not create huge page components or universal catch-all services.
+- Validate generated static deployment for a GitHub Pages project subpath and direct/deep links. Angular PWA caches can make commit-driven data stale; define and test a freshness/update policy for catalog metadata and news partitions. GitHub Pages deployment must be confirmed separately from a successful local build.
+- **Decision, not completed work:** existing repo documentation does not mean an Angular scaffold, site, PWA, deployment or CI has been created. Implement only in the scope of a concrete coding task; don't present a speculative architecture as running.
+
 ## Public repository and secrets
 
 - Never commit API keys, .env, access tokens, cookies, private files, arbitrary server response dumps or copyrighted full article bodies without rights. Public repository does not confer rights to republish full text.
@@ -50,7 +58,7 @@ The first dictated source is **ambiguous** and exists only in config/source_cand
 1. Verify and identify the first dictated source (needs exact name/URL).
 2. Inspect War Reporter code and document reusable vs non-reusable modules.
 3. Build a small source registry schema and two extraction spikes (RSS + web), with safe fixtures and tests.
-4. Persist metadata/available body and build a minimal reader with original links.
+4. Persist metadata/available body and build a **small-component Angular** minimal reader with original links; read from the versioned static data access layer.
 5. Prototype one fixed daily perspective snapshot and compare two- vs three-pass LLM aggregation with explicit cost evidence.
 
 This sequence is planning guidance, not authorization to implement the whole roadmap without a scoped user request.
