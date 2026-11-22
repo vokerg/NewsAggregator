@@ -306,11 +306,37 @@ class RuntimeTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as d:
             report = run(sources(), MetadataOnlyBody(), Path(d), now=AT)
-            self.assertEqual(report["status"], "ok")
+            self.assertEqual(report["status"], "partial")
             rows = _read_items(Path(d) / "public/items.ndjson")
             article = next(row for row in rows.values() if row["original_url"].endswith("/stories/two"))
             self.assertEqual(article["body_extraction_status"], "unavailable")
+            self.assertEqual(report["sources"]["example-rss"]["error_code"], "body_unavailable")
             self.assertEqual(article["published_at"], "2026-11-18T09:00:00Z")
+
+    def test_late_body_retry_fills_only_unknown_publication_time(self):
+        class FirstPassBodyUnavailable:
+            def get(self, url, source):
+                if url.endswith("/stories/two"):
+                    raise FetchError("http_error")
+                return fixtures().get(url, source)
+
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d)
+            first = run(sources(), FirstPassBodyUnavailable(), path, now=AT)
+            self.assertEqual(first["status"], "partial")
+            before = next(v for v in _read_items(path / "public/items.ndjson").values()
+                          if v["original_url"].endswith("/stories/two"))
+            self.assertIsNone(before["published_at"])
+            self.assertEqual(before["body_extraction_status"], "failed")
+            second = run(sources(), fixtures(), path, now=AT + timedelta(hours=5))
+            self.assertEqual(second["status"], "ok")
+            after = next(v for v in _read_items(path / "public/items.ndjson").values()
+                         if v["original_url"].endswith("/stories/two"))
+            self.assertEqual(after["published_at"], "2026-11-18T07:00:00Z")
+            self.assertEqual(after["body_extraction_status"], "extracted")
+            self.assertEqual(after["first_seen_at"], before["first_seen_at"])
+            self.assertEqual(after["item_id"], before["item_id"])
+            self.assertEqual(second["total_item_count"], 4)
 
     def test_body_parser_exception_preserves_headline_metadata(self):
         with tempfile.TemporaryDirectory() as d:
