@@ -63,16 +63,23 @@ def parse_feed(xml_text: str, source: Source) -> Discovery:
     except ET.ParseError as exc:
         raise FetchError("malformed_feed") from exc
     atom = "{http://www.w3.org/2005/Atom}"
-    if root.tag in ("rss", "{http://purl.org/rss/1.0/}RDF", "RDF"):
-        entries = root.findall("./channel/item") if root.tag == "rss" else root.findall("{http://purl.org/rss/1.0/}item")
+    rdf = "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}"
+    rss1 = "{http://purl.org/rss/1.0/}"
+    if root.tag in ("rss", rdf + "RDF", "RDF"):
+        namespace = "" if root.tag == "rss" else rss1
+        entries = (root.findall("./channel/item") if root.tag == "rss"
+                   else root.findall(rss1 + "item"))
         rows = []
         for e in entries[:source.max_items]:
-            rows.append((_text(e, "link"), _text(e, "title"), _date(_text(e, "pubDate") or _text(e, "{http://purl.org/dc/elements/1.1/}date"))))
+            link = _text(e, namespace + "link")
+            rows.append((urljoin(source.index_url, link) if link else "", _text(e, namespace + "title"),
+                         _date(_text(e, "pubDate") or _text(e, "{http://purl.org/dc/elements/1.1/}date"))))
     elif root.tag == atom + "feed":
         rows = []
         for e in root.findall(atom + "entry")[:source.max_items]:
             href = next((l.get("href", "") for l in e.findall(atom + "link") if l.get("rel", "alternate") == "alternate"), "")
-            rows.append((href, _text(e, atom + "title"), _date(_text(e, atom + "published") or _text(e, atom + "updated"))))
+            rows.append((urljoin(source.index_url, href) if href else "", _text(e, atom + "title"),
+                         _date(_text(e, atom + "published") or _text(e, atom + "updated"))))
     else:
         raise FetchError("malformed_feed")
     items, skipped = [], 0
