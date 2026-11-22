@@ -1,6 +1,6 @@
 # Frontend architecture decision — Angular / responsive / PWA
 
-**Decision accepted 2026-11-18.** This is an implementation contract and migration-friendly architecture target, **not an assertion that Angular code, a deployed website or a working PWA exists yet**.
+**Decision accepted 2026-11-18. Foundation scaffold implemented for #1 (2026-11-22).** Angular shell, read-only static catalog fixture, lazy route and unit/CI configuration exist. **No deployed website, real news feed, installable PWA or live browser/device verification exists yet.**
 
 ## Product intent
 
@@ -105,3 +105,13 @@ Docs: https://angular.dev/ecosystem/service-workers/getting-started ; https://an
 6. Later PWA installability and freshness checks on actual devices; no claim of offline access before test.
 
 The key quality bar: easy to add new feed/detail/sources features without growing a single component or coupling pages to the current storage mechanism.
+
+## Foundation implementation note — 2026-11-22 (#1)
+
+Implemented a minimal standalone Angular v22 shell with lazy `news` route, hash-based Pages-safe navigation, mobile-first responsive styles, visible focus/skip link, external template/style files, signals/computed + OnPush, and an injectable typed `NewsReadRepository`. The HTTP adapter resolves relative to `document.baseURI` and validates a versioned **empty** public metadata fixture. Dedicated tests cover schema rejection, distinct `about_country_codes` versus `perspective_ids`, original URL, absent published date, status/retry and navigation. Angular v22/Vitest + TypeScript 6.0.2 and Node 24.15.0 are pinned in `package.json`/`.nvmrc`.
+
+The `build:pages` script specifies the project subpath; hash routing is an explicit interim deep-link strategy for GitHub Pages. The CI workflow checks output base URL and presence of the static fixture but does **not** deploy. Actual viewport measurements, keyboard traversal on devices, and Pages hosting must be recorded after a browser/deployment run. No PWA worker or live-feed integration is introduced.
+
+### 2026-11-22 pre-merge review for #1
+
+The interim catalog parser strictly allowlists metadata keys, checks explicit timestamp offsets and HTTPS publisher URLs, rejects duplicate IDs and pages exceeding 500 records, and never accepts arbitrary full-text/raw fields. This validates what the browser consumes; the future issue #4 still owns the authoritative producer-to-reader transformation and publication CI. The card displays UTC context for publication timestamps, while dark-mode links use a high-contrast color variable. The route test exercises lazy navigation, and static catalog requests are tested against a Pages subpath. GitHub Actions checks PRs and pushes to `main`, not an issue-specific branch.

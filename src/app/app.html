@@ -1,0 +1,32 @@
+<button class="skip-link" type="button" (click)="focusMain()">
+  Skip to content
+</button>
+<div class="page-frame">
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="wordmark" routerLink="/news" aria-label="NewsAggregator home">
+        <span class="wordmark-icon" aria-hidden="true">N</span>
+        <span>NewsAggregator</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a
+          routerLink="/news"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+        >
+          News
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content" class="main-content" tabindex="-1">
+    <router-outlet />
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Source-defined perspectives. Original reporting stays with its publisher.
+    </p>
+  </footer>
+</div>

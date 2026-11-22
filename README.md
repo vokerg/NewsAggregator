@@ -1,6 +1,6 @@
 # NewsAggregator
 
-**Статус: проектирование и fixture-tested collector foundation (#8).** Это публичный репозиторий. Базовый Python CLI для RSS/web и offline-тесты реализованы; реальные источники не активированы, хостинг/планировщик, LLM-пайплайн и сайт **ещё не реализованы**.
+**Статус: fixture-tested collector foundation (#8) и базовый Angular shell (#1).** Это публичный репозиторий. Python CLI и offline-тесты коллектора существуют; Angular web-app scaffold добавлен, но реальные источники, production hosting/PWA, планировщик и LLM-пайплайн **ещё не реализованы**.
 
 NewsAggregator — персональный агрегатор мировых новостей с возможностью смотреть не только **что произошло**, но и **что разные медиасреды считают важным**. Пользователь самостоятельно формирует реестр источников, включая официальные, независимые, ангажированные и пропагандистские медиа. Система должна показывать их повестку с атрибуцией, а не незаметно нормализовать её под единый «объективный» обзор.
 
@@ -46,7 +46,7 @@ NewsAggregator — персональный агрегатор мировых н
 
 ## Следующий шаг
 
-Решение об Angular и целевом PWA **закреплено в документации**, но UI, PWA, сборка и GitHub Pages **ещё не созданы и не опубликованы**. Для начала реализации использовать отдельную задачу с проверяемым CLI scaffold, маршрутизацией, тестами и сборкой; не считать выбор стека готовым приложением.
+Angular scaffold, маршрутизация, тесты и сборка реализованы в #1. PWA и GitHub Pages **не развёрнуты и не проверены**. Следующий UI-этап — reader и фильтры в отдельных issues; не считать пустую фикстуру реальной новостной лентой.
 
 Подтвердить первый источник и его URL, проверить на одном RSS- и одном web-источнике список заголовков, извлечение body, метки времени и повторяемость сохранения. Затем протестировать два этапа LLM на малом наборе с учётом цены и точности. Никаких утверждений о работающем сборе до фактического прогона.
 
@@ -62,3 +62,22 @@ python -m newsagg --registry tests/fixtures/registry.json \
 ```
 
 Live network требует явного `--live` и подтверждённого/включённого источника с проверенными robots/terms. Публичное хранилище содержит **только metadata**; сырой HTML и полный текст не публикуются. CI проверяет только фикстуры, не реальные publisher endpoints.
+
+## Angular frontend — issue #1
+
+A minimal, **read-only** Angular 22 shell is available in `src/` with a lazy news-feed route, responsive navigation, accessible empty/error/loading states, a reusable news card, and an injected typed static JSON repository. The committed `public/catalog/manifest.json` is a version-1 **empty fixture**, not real news. This is not an operational or published reader and does not add a per-article LLM summary.
+
+Pinned primary versions: Angular/CLI **22.2.6**, TypeScript **6.0.2**, Node **24.15.0** (or an officially supported Node 22/26 release). Angular 22 requires Node `^22.22.3 || ^24.15.0 || ^26.0.0`. See https://angular.dev/reference/versions. Node 22.16 is **too old** for Angular 22.
+
+```bash
+nvm use                     # Node 24.15.0 from .nvmrc
+npm ci                      # Reproducible install from committed package-lock.json
+npm run lint
+npm run test:ci
+npm run build:pages
+npm start
+```
+
+The local development URL is `http://localhost:4200/#/news`. The production build sets `<base href="/NewsAggregator/">` and uses hash routes (`/NewsAggregator/#/news`) to avoid GitHub Pages history-mode deep-link 404s. The `build:pages` command checks *compile-time path configuration only*; neither publishing nor live Pages checks are enabled. There is no service worker, installable PWA, backend read API, real catalog, or ingestion scheduler. Unit tests use the Angular Vitest builder and mocked HTTP; GitHub Actions provides the compatible Node runtime for CI. The v1 catalog is a bounded metadata projection, not the collector's raw NDJSON schema; issue #4 must define and validate the producer-to-reader transformation. The renderer rejects unrecognized fields, invalid dates and unsafe publisher URLs.
+
+Future work: issue #2 implements article detail and fixture-driven reader semantics, #4 implements partitioned read-model publishing, and #5 addresses PWA installation and freshness. Do not treat the temporary empty manifest as a production pagination format.
