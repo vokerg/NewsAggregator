@@ -93,6 +93,9 @@ def require_url(url: str) -> str:
         raise ValidationError("private IP URL")
     if any(_has_sensitive_query_name(k) for k, _ in parse_qsl(parsed.query, keep_blank_values=True)):
         raise ValidationError("sensitive query parameter")
+    if (_SECRET.search(parsed.fragment) or
+            any(_has_sensitive_query_name(k) for k, _ in parse_qsl(parsed.fragment, keep_blank_values=True))):
+        raise ValidationError("sensitive URL fragment")
     return url
 
 
