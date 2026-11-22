@@ -2,10 +2,12 @@
   <p class="source">{{ item().source_name }}</p>
   <h2>{{ item().title }}</h2>
   <p class="attribution">
-    <strong>View from:</strong> {{ item().perspective_ids.join(', ') || 'Unknown' }}
+    <strong>View from:</strong> {{ item().perspective_ids.join(', ') ||
+    'Unknown' }}
   </p>
   <p class="attribution">
-    <strong>About:</strong> {{ item().about_country_codes.join(', ') || 'Unknown' }}
+    <strong>About:</strong> {{ item().about_country_codes.join(', ') ||
+    'Unknown' }}
   </p>
   <p class="meta">
     @if (item().published_at; as published) {

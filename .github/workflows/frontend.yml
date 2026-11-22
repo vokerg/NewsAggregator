@@ -21,11 +21,6 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Format check
         run: npm run format:check
-      - name: Formatter diagnostic
-        if: failure()
-        run: |
-          npx prettier --write src/app/app.routes.spec.ts src/app/features/news-feed/news-card.html
-          git --no-pager diff -- src/app/app.routes.spec.ts src/app/features/news-feed/news-card.html
       - name: Lint
         run: npm run lint
       - name: Unit tests
