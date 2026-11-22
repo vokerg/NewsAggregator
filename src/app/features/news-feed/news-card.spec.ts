@@ -1,10 +1,11 @@
 import { TestBed } from "@angular/core/testing";
+import { provideRouter } from "@angular/router";
 import { describe, expect, it } from "vitest";
 import { NewsItem } from "../../core/models/news";
 import { NewsCard } from "./news-card";
 
 describe("NewsCard", () => {
-  it("links to the exact original URL and labels undated/unavailable body", () => {
+  it("keeps original links separate from internal navigation and labels unavailable text", () => {
     const item: NewsItem = {
       id: "one",
       title: "A headline",
@@ -15,10 +16,14 @@ describe("NewsCard", () => {
       first_seen_at: "2026-11-18T00:00:00Z",
       perspective_ids: ["dk-media"],
       about_country_codes: ["UA"],
+      tags: ["politics", "world"],
       extraction_status: "unavailable",
     };
 
-    TestBed.configureTestingModule({ imports: [NewsCard] });
+    TestBed.configureTestingModule({
+      imports: [NewsCard],
+      providers: [provideRouter([])],
+    });
     const fixture = TestBed.createComponent(NewsCard);
     fixture.componentRef.setInput("item", item);
     fixture.detectChanges();
@@ -27,13 +32,15 @@ describe("NewsCard", () => {
     expect(article.textContent).toContain("A headline");
     expect(article.textContent).toContain("Publication date unknown");
     expect(article.textContent).toContain("Body unavailable");
-    const link = article.querySelector("a");
+    expect(article.textContent).toContain("politics");
+    expect(article.textContent).toContain("View from:");
+    expect(article.textContent).toContain("About:");
+    expect(article.querySelector('a[href="/news/one"]')?.textContent).toContain("A headline");
+    const link = article.querySelector('a[href^="https://"]');
     expect(link?.getAttribute("href")).toBe(item.original_url);
     expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
   });
-});
 
-describe("NewsCard timestamp", () => {
   it("shows publication time with explicit UTC context", () => {
     const item: NewsItem = {
       id: "two",
@@ -47,7 +54,10 @@ describe("NewsCard timestamp", () => {
       about_country_codes: [],
       extraction_status: "extracted",
     };
-    TestBed.configureTestingModule({ imports: [NewsCard] });
+    TestBed.configureTestingModule({
+      imports: [NewsCard],
+      providers: [provideRouter([])],
+    });
     const fixture = TestBed.createComponent(NewsCard);
     fixture.componentRef.setInput("item", item);
     fixture.detectChanges();
