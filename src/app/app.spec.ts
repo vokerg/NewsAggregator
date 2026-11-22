@@ -12,7 +12,9 @@ describe('App shell', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('a.skip-link')?.getAttribute('href')).toBe('#main-content');
+    const skip = root.querySelector('button.skip-link') as HTMLButtonElement;
+    skip.click();
+    expect(document.activeElement).toBe(root.querySelector('main'));
     expect(root.querySelector('main')?.id).toBe('main-content');
     expect(root.querySelector('nav')?.getAttribute('aria-label')).toBe('Main navigation');
   });

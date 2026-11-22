@@ -21,9 +21,10 @@ export class NewsFeedPage {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly state = signal<FeedState>({ kind: 'loading' });
-  readonly count = computed(() =>
-    this.state().kind === 'ready' ? (this.state() as { kind: 'ready'; items: readonly NewsItem[] }).items.length : 0,
-  );
+  readonly count = computed(() => {
+    const state = this.state();
+    return state.kind === 'ready' ? state.items.length : 0;
+  });
 
   constructor() {
     this.reload();
