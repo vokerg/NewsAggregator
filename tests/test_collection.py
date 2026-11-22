@@ -77,7 +77,8 @@ class RegistryTests(unittest.TestCase):
                     "https://news.example.org/x?client_secret=secret",
                     "https://news.example.org/x?session_id=secret",
                     "https://news.example.org/x?X-Amz-Signature=secret",
-                    "https://news.example.org/x?refreshToken=secret"]:
+                    "https://news.example.org/x?refreshToken=secret",
+                    "https://news.example.org/x#access_token=secret"]:
             with self.assertRaises(ValidationError, msg=url):
                 require_url(url)
         self.assertEqual(canonical_url("https://news.example.org/a?utm_source=x&n=1#z"), "https://news.example.org/a?n=1")
@@ -97,6 +98,22 @@ class AdapterTests(unittest.TestCase):
         result = parse_feed((FIX / "atom.xml").read_text(), sources()[0])
         self.assertEqual(result.items[0].headline, "Atom entry")
         self.assertEqual(result.items[0].published_at, "2026-11-17T23:00:00Z")
+
+    def test_rss1_namespace_and_relative_article_link(self):
+        xml = ('<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" '
+               'xmlns="http://purl.org/rss/1.0/" '
+               'xmlns:dc="http://purl.org/dc/elements/1.1/">'
+               '<item><title>RDF entry</title><link>/stories/rdf</link>'
+               '<dc:date>2026-11-18T01:00:00+01:00</dc:date></item></rdf:RDF>')
+        items = parse_feed(xml, sources()[0]).items
+        self.assertEqual(items[0].original_url, "https://news.example.org/stories/rdf")
+        self.assertEqual(items[0].published_at, "2026-11-18T00:00:00Z")
+
+    def test_atom_relative_article_link(self):
+        xml = ('<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>Relative</title>'
+               '<link href="/stories/relative"/></entry></feed>')
+        items = parse_feed(xml, sources()[0]).items
+        self.assertEqual(items[0].original_url, "https://news.example.org/stories/relative")
 
     def test_malformed_or_entity_feed_fails_closed(self):
         for payload in ["oops", "<!DOCTYPE rss [<!ENTITY x 'BAD'>]><rss/>", "<html/>"]:
