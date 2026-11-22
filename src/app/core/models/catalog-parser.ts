@@ -81,10 +81,7 @@ function hasSensitiveParam(name: string): boolean {
 }
 
 function isSafePublisherUrl(value: unknown): value is string {
-  if (
-    !isPublicText(value, 2048) ||
-    /\s/.test(value)
-  ) {
+  if (!isPublicText(value, 2048) || /\s/.test(value)) {
     return false;
   }
 
@@ -113,7 +110,10 @@ function isSafePublisherUrl(value: unknown): value is string {
     const fragment = decodeURIComponent(url.hash.slice(1));
     return !fragment
       .split(/[?&#]/)
-      .some((part) => part.includes("=") && hasSensitiveParam(part.split("=")[0] ?? ""));
+      .some(
+        (part) =>
+          part.includes("=") && hasSensitiveParam(part.split("=")[0] ?? ""),
+      );
   } catch {
     // Includes invalid URLs and invalid percent-encoded fragments.
     return false;

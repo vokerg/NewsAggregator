@@ -15,7 +15,8 @@ describe("App routing", () => {
         {
           provide: NEWS_READ_REPOSITORY,
           useValue: {
-            loadCatalog: () => of({ schema_version: 1, revision: "test", items: [] }),
+            loadCatalog: () =>
+              of({ schema_version: 1, revision: "test", items: [] }),
           },
         },
       ],
@@ -23,7 +24,9 @@ describe("App routing", () => {
 
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl("/news", NewsFeedPage);
-    expect(harness.routeNativeElement?.textContent).toContain("No articles yet");
+    expect(harness.routeNativeElement?.textContent).toContain(
+      "No articles yet",
+    );
 
     await harness.navigateByUrl("/a-missing-page", NewsFeedPage);
     expect(TestBed.inject(Router).url).toBe("/news");
