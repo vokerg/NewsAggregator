@@ -65,3 +65,7 @@
 ## Evidence — 2026-11-18, issue #8
 
 Implemented a standalone Python 3.11+ standard-library ingestion foundation, with strictly opted-in live HTTPS mode and no enabled real sources. RSS/Atom and bounded HTML index adapters, strict metadata-only public projection, persistent per-source status/cadence/cursor, idempotent NDJSON, and offline GitHub Actions fixtures are provided. Local evidence: `python -m unittest discover -s tests -q` passed **25 tests**; two same-time synthetic CLI runs retained 4 unique public article IDs (`ok` then cadence `idle`), without external publisher traffic. **Not verified:** live DR/TV2/NewsMaker/Meduza extraction, actual rights, end-to-end schedule, deployments, or GitHub CI. Full contracts and War Reporter pattern review: [COLLECTION.md](COLLECTION.md). These are still research and follow-up decisions, not claims of production ingestion.
+
+### 2026-11-22 — PR #13 self-review
+
+Found and fixed HTML ignored-element nesting, optional body parser exception isolation, common query/fragment credential leakage, RSS 1.0 namespace handling and relative RSS/Atom links. Added five regression tests (25 → 30); the `offline-collector` job in GitHub Actions [run 44990633084](https://github.com/vokerg/NewsAggregator/actions/runs/44990633084) passed all 30 on Python 3.12 and repeated offline ingestion with 4 stable IDs. No real publisher network checks or source onboarding occurred. Details and limitations: [COLLECTION.md](COLLECTION.md).
