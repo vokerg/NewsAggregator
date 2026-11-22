@@ -181,46 +181,39 @@ def discover(source: Source, fetcher, at: datetime) -> Discovery:
 
 
 class BodyParser(HTMLParser):
+    """Extract text only from article nodes, tracking actual open element names.
+
+    A nesting depth alone is unsafe here: void tags (such as img) and unrelated
+    closing tags must not make hidden navigation or script text public.
+    """
+
+    _IGNORED = {"script", "style", "nav", "footer", "form", "noscript", "template", "svg"}
+
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.article_depth = 0
-        self.ignore_depth = 0
+        self.tags: list[str] = []
         self.parts: list[str] = []
-        self.title_parts: list[str] = []
-        self.in_h1 = False
         self.published: str | None = None
 
-    def handle_starttag(self, tag, attrs):
-        attrs = dict(attrs)
-        if tag == "meta" and (attrs.get("property") == "article:published_time" or attrs.get("name") == "datePublished"):
-            self.published = self.published or _date(attrs.get("content"))
-        if tag == "article":
-            self.article_depth += 1
-        elif self.article_depth and tag not in VOID_TAGS:
-            self.article_depth += 1
-        if self.article_depth:
-            if tag in {"script", "style", "nav", "footer", "form", "noscript"}:
-                self.ignore_depth += 1
-            elif self.ignore_depth:
-                self.ignore_depth += 1
-            if tag == "h1":
-                self.in_h1 = True
-            if tag == "time" and attrs.get("datetime"):
-                self.published = self.published or _date(attrs["datetime"])
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        a = dict(attrs)
+        if tag == "meta" and (a.get("property") == "article:published_time" or a.get("name") == "datePublished"):
+            self.published = self.published or _date(a.get("content"))
+        if tag != "article" and not self.tags:
+            return
+        if tag not in VOID_TAGS:
+            self.tags.append(tag)
+        if tag == "time" and a.get("datetime"):
+            self.published = self.published or _date(a["datetime"])
 
-    def handle_data(self, data):
-        if self.article_depth and not self.ignore_depth:
+    def handle_data(self, data: str) -> None:
+        if self.tags and not self._IGNORED.intersection(self.tags):
             self.parts.append(data)
-            if self.in_h1:
-                self.title_parts.append(data)
 
-    def handle_endtag(self, tag):
-        if tag == "h1":
-            self.in_h1 = False
-        if self.ignore_depth:
-            self.ignore_depth -= 1
-        if self.article_depth and tag not in VOID_TAGS:
-            self.article_depth -= 1
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.tags:
+            # Ignore stray/mismatched closing tags rather than corrupting depth.
+            del self.tags[len(self.tags) - 1 - self.tags[::-1].index(tag):]
 
 
 def extract_body(html_text: str) -> tuple[str | None, str | None]:
