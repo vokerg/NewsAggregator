@@ -133,6 +133,10 @@ def _merge(previous: dict[str, Any] | None, item: dict[str, Any]) -> dict[str, A
     # Original URL, title and perspective metadata at capture remain frozen.
     merged = dict(previous)
     merged["last_seen_at"] = max(previous["last_seen_at"], item["last_seen_at"])
+    # A later retry can supply previously unknown publication metadata; never
+    # replace an already captured publication timestamp.
+    if merged["published_at"] is None and item["published_at"] is not None:
+        merged["published_at"] = item["published_at"]
     if previous["body_extraction_status"] != "extracted" and item["body_extraction_status"] == "extracted":
         for name in ("body_extraction_status", "body_char_count", "extraction_status"):
             merged[name] = item[name]
@@ -203,6 +207,8 @@ def run(registry: list[Source], fetcher, output: Path, *, now: datetime, force: 
                                 result["extracted"] += 1
                             else:
                                 body_status = "unavailable"
+                                result["status"] = "partial"
+                                result["error_code"] = "body_unavailable"
                         except Exception:
                             # Optional retrieval/parsing must never drop the discovered
                             # headline, even if a publisher's malformed HTML crashes a
