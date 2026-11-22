@@ -1,6 +1,6 @@
 # NewsAggregator
 
-**Статус: fixture-tested collector foundation (#8) и базовый Angular shell (#1).** Это публичный репозиторий. Python CLI и offline-тесты коллектора существуют; Angular web-app scaffold добавлен, но реальные источники, production hosting/PWA, планировщик и LLM-пайплайн **ещё не реализованы**.
+**Статус: fixture-tested collector foundation (#8), Angular shell (#1) и synthetic-fixture News Reader (#2).** Это публичный репозиторий. Python CLI и offline-тесты коллектора существуют; Angular web-app scaffold добавлен, но реальные источники, production hosting/PWA, планировщик и LLM-пайплайн **ещё не реализованы**.
 
 NewsAggregator — персональный агрегатор мировых новостей с возможностью смотреть не только **что произошло**, но и **что разные медиасреды считают важным**. Пользователь самостоятельно формирует реестр источников, включая официальные, независимые, ангажированные и пропагандистские медиа. Система должна показывать их повестку с атрибуцией, а не незаметно нормализовать её под единый «объективный» обзор.
 
@@ -65,7 +65,7 @@ Live network требует явного `--live` и подтверждённо�
 
 ## Angular frontend — issue #1
 
-A minimal, **read-only** Angular 22 shell is available in `src/` with a lazy news-feed route, responsive navigation, accessible empty/error/loading states, a reusable news card, and an injected typed static JSON repository. The committed `public/catalog/manifest.json` is a version-1 **empty fixture**, not real news. This is not an operational or published reader and does not add a per-article LLM summary.
+A minimal, **read-only** Angular 22 shell is available in `src/` with a lazy news-feed route, responsive navigation, accessible empty/error/loading states, a reusable news card, and an injected typed static JSON repository. The committed `public/catalog/manifest.json` is a version-1 **synthetic reader fixture** with two invented items, not real news. This is not an operational or published reader and does not add a per-article LLM summary.
 
 Pinned primary versions: Angular/CLI **22.2.6**, TypeScript **6.0.2**, Node **24.15.0** (or an officially supported Node 22/26 release). Angular 22 requires Node `^22.22.3 || ^24.15.0 || ^26.0.0`. See https://angular.dev/reference/versions. Node 22.16 is **too old** for Angular 22.
 
@@ -80,4 +80,17 @@ npm start
 
 The local development URL is `http://localhost:4200/#/news`. The production build sets `<base href="/NewsAggregator/">` and uses hash routes (`/NewsAggregator/#/news`) to avoid GitHub Pages history-mode deep-link 404s. The `build:pages` command checks *compile-time path configuration only*; neither publishing nor live Pages checks are enabled. There is no service worker, installable PWA, backend read API, real catalog, or ingestion scheduler. Unit tests use the Angular Vitest builder and mocked HTTP; GitHub Actions provides the compatible Node runtime for CI. The v1 catalog is a bounded metadata projection, not the collector's raw NDJSON schema; issue #4 must define and validate the producer-to-reader transformation. The renderer rejects unrecognized fields, invalid dates and unsafe publisher URLs.
 
-Future work: issue #2 implements article detail and fixture-driven reader semantics, #4 implements partitioned read-model publishing, and #5 addresses PWA installation and freshness. Do not treat the temporary empty manifest as a production pagination format.
+Issue #2 implements fixture-driven article details. Future work: #4 implements partitioned read-model publishing and #5 addresses PWA installation and freshness. Do not treat the temporary empty manifest as a production pagination format.
+
+## Synthetic news reader — issue #2 (2026-11-22)
+
+The read-only Angular app now demonstrates feed cards and routes such as `/#/news/demo-danish-001`, with a separate validated public detail document for each item. `public/catalog/manifest.json` intentionally contains **two invented example records**, one with original *project-authored* text and one with explicitly rights-unavailable text. Every page containing those records is labelled as a demonstration. The `example.org` publisher links are placeholders, **not** live articles. No real source has been enabled, collected or published.
+
+The temporary v1 catalog remains bounded to 500 metadata records; optional `tags` maintain backward compatibility with previous v1 catalogs. Item IDs must be path-safe ASCII identifiers (letter/digit first, then letters/digits/hyphens/underscores). Each item references a `catalog/items/<id>.json` document that must match its ID. A detail document contains either:
+
+- `body: { "kind": "available", "publication_basis": "synthetic|licensed|public_domain", "paragraphs": ["plain text"] }` for rights-reviewed text; or
+- `body: { "kind": "unavailable", "reason": "rights|not_extracted|failed|unknown" }` when text cannot be shown.
+
+These are **data assertions supplied by the producer**, not proof of a license. The publisher/producer must verify rights before a public file is generated; the browser rejects unsupported shapes, unexpected fields, unsafe URLs, oversized content and ID mismatches. No HTML is rendered from source data. `extraction_status: extracted` does not imply that the article body is publicly accessible. The original HTTPS URL remains available from both feed and detail.
+
+Run `npm ci && npm run format:check && npm run lint && npm run test:ci && npm run build:pages` under the supported Node version in `.nvmrc`. CI tests the reader using synthetic HTTP fixtures and confirms JSON assets are copied by the build. This is **not** evidence of deployed Pages, device tests, or live publisher access. Partitioning, producer-side rights enforcement, and real data remain #4 and source onboarding.

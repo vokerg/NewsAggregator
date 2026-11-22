@@ -1,6 +1,6 @@
 # NewsAggregator — agent operating contract
 
-This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. **A fixture-tested, opt-in Python source-collection foundation (#8) and a minimal Angular shell (#1) exist, but no real sources are enabled or live-tested; no production collector schedule, LLM service, deployed website, production dataset, or automated source has been implemented.** Do not claim otherwise.
+This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. **A fixture-tested, opt-in Python source-collection foundation (#8), Angular shell (#1), and synthetic-fixture reader (#2) exist, but no real sources are enabled or live-tested; no production collector schedule, LLM service, deployed website, production dataset, or automated source has been implemented.** Do not claim otherwise.
 
 ## Mandatory context
 
@@ -28,7 +28,7 @@ Do **not** implement or require an LLM summary of each individual ingested artic
 - **Static-first, commit-driven:** initial published news/read models are generated from committed public data **in this repository**. Prefer a versioned static JSON manifest + paginated/date-partitioned projections; Angular reads these assets through a data access abstraction, without a runtime read API initially. The data producer owns commits, and the frontend is read-only. Never place GitHub write tokens or OpenAI keys in browser bundles.
 - Follow [docs/FRONTEND.md](docs/FRONTEND.md): supported Angular 22 line (at decision time), strict standalone architecture, feature-first layout, route-level lazy loading, small single-purpose components, external templates/styles, OnPush and Signals/computed, inject(), accessible semantic HTML, keyboard and touch support, typed repository interface, error/loading/empty states, and adjacent unit tests. Do not create huge page components or universal catch-all services.
 - Validate generated static deployment for a GitHub Pages project subpath and direct/deep links. Angular PWA caches can make commit-driven data stale; define and test a freshness/update policy for catalog metadata and news partitions. GitHub Pages deployment must be confirmed separately from a successful local build.
-- **Foundation status (#1):** Angular shell, lazy feed route, static empty fixture, frontend CI and tests are now code, not a deployed site. PWA, deployment, real dataset, and actual mobile/device checks are still unimplemented. Do not describe these as running.
+- **Foundation status (#1, #2):** Angular shell, lazy feed/detail routes, synthetic static reader fixture, frontend CI and tests are now code, not a deployed site. PWA, deployment, real dataset, and actual mobile/device checks are still unimplemented. Do not describe these as running.
 
 ## Public repository and secrets
 

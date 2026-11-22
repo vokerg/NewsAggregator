@@ -1,6 +1,6 @@
 # Frontend architecture decision — Angular / responsive / PWA
 
-**Decision accepted 2026-11-18. Foundation scaffold implemented for #1 (2026-11-22).** Angular shell, read-only static catalog fixture, lazy route and unit/CI configuration exist. **No deployed website, real news feed, installable PWA or live browser/device verification exists yet.**
+**Decision accepted 2026-11-18. Foundation scaffold implemented for #1 and synthetic-fixture reader for #2 (2026-11-22).** Angular shell, read-only static catalog fixture, lazy route and unit/CI configuration exist. **No deployed website, real news feed, installable PWA or live browser/device verification exists yet.**
 
 ## Product intent
 
@@ -115,3 +115,13 @@ The `build:pages` script specifies the project subpath; hash routing is an expli
 ### 2026-11-22 pre-merge review for #1
 
 The interim catalog parser strictly allowlists metadata keys, checks explicit timestamp offsets and HTTPS publisher URLs, rejects duplicate IDs and pages exceeding 500 records, and never accepts arbitrary full-text/raw fields. This validates what the browser consumes; the future issue #4 still owns the authoritative producer-to-reader transformation and publication CI. The card displays UTC context for publication timestamps, while dark-mode links use a high-contrast color variable. The route test exercises lazy navigation, and static catalog requests are tested against a Pages subpath. GitHub Actions checks PRs and pushes to `main`, not an issue-specific branch.
+
+## Reader implementation note — 2026-11-22 (#2)
+
+A small lazy `news/:id` route uses the existing read-only repository interface. The feed keeps a visible original-publisher link and provides an internal detail link. The detail renders source-provided metadata (source ID, first-seen and publication timestamps, original URL, perspective, subject geography, optional tags and extraction status) and either rights-reviewed plain text or an explicit unavailable reason. There is no per-article AI summary and no client-side GitHub API.
+
+The temporary v1 manifest supports optional `tags` for backwards-compatible schema evolution, strict path-safe IDs and a separate bounded `catalog/items/<id>.json` document, matched against the manifest's original metadata. Synthetic source and article fixtures power current UI/test behavior. The manifest revision `fixture-reader-v1` triggers a prominent invented-data notice in feed and detail. `example.org` links are illustrative, not working publisher URLs. Missing catalog IDs, malformed documents, network failures and lack of public-body rights are different UI states.
+
+An explicit `publication_basis` marker controls the form of publicly presented text but **does not establish legal rights**. The producer (future #4) must enforce rights and validate any actual publishing. The reader renders plaintext through Angular interpolation, never as trusted HTML. Real capture remains separately rights-controlled.
+
+**Evidence/limits:** targeted Angular parser, repository, card/feed and detail/route tests are included; GitHub Actions owns pinned-Node compile, lint, format, unit tests and Pages-subpath build. No live publisher smoke, actual browser viewport/device testing, service worker, automated dataset publication, or deployed Pages check is claimed from this change.
