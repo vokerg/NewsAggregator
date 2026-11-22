@@ -22,7 +22,12 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
       - name: Format check
-        run: npm run format:check
+        run: |
+          npm run format
+          echo 'FORMAT_PATCH_START'
+          git diff -- src public
+          echo 'FORMAT_PATCH_END'
+          npm run format:check
       - name: Lint
         run: npm run lint
       - name: Unit tests
