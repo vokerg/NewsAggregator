@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "timezone": "Europe/Copenhagen",
+  "sources": [
+    {
+      "source_id": "example-rss", "display_name": "Fictional RSS Publisher", "enabled": true,
+      "canonical_home_url": "https://news.example.org/", "index_url": "https://news.example.org/rss",
+      "adapter": "rss", "publisher_country": "DK", "languages": ["da"],
+      "perspective_ids": ["dk-media"], "editorial_labels": ["example fixture"],
+      "allowed_hosts": ["news.example.org"], "cadence_minutes": 288, "max_pages": 1,
+      "max_items": 20, "extract_body": true, "item_tag": "article",
+      "link_path_prefix": "/stories/", "rights_profile": "unknown"
+    },
+    {
+      "source_id": "example-web", "display_name": "Fictional Web Publisher", "enabled": true,
+      "canonical_home_url": "https://news.example.org/", "index_url": "https://news.example.org/news",
+      "adapter": "web", "publisher_country": "DK", "languages": ["da"],
+      "perspective_ids": ["dk-media"], "editorial_labels": [],
+      "allowed_hosts": ["news.example.org"], "cadence_minutes": 288, "max_pages": 2,
+      "max_items": 20, "extract_body": false, "item_tag": "article",
+      "link_path_prefix": "/stories/", "rights_profile": "metadata_only"
+    }
+  ]
+}

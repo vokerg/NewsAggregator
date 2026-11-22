@@ -1,6 +1,6 @@
 # NewsAggregator — agent operating contract
 
-This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. **No collector, LLM service, scheduled job, website, production dataset, or automated source has been implemented here yet.** Do not claim otherwise.
+This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. **A fixture-tested, opt-in Python source-collection foundation (#8) exists, but no real sources are enabled or live-tested; no production collector schedule, LLM service, website, production dataset, or automated source has been implemented.** Do not claim otherwise.
 
 ## Mandatory context
 
@@ -53,7 +53,9 @@ The first dictated source is **ambiguous** and exists only in config/source_cand
 - Do not interpret an LLM prompt to preserve a propagandistic viewpoint as permission to hallucinate or to state source claims as independently confirmed. Preserve attributed editorial salience and rhetoric without silent neutralization.
 - For a completed change report exact files, observed tests/runs, coverage, unimplemented points and decision log. Never claim an unexecuted smoke test passed.
 
-## Initial next-agent sequence
+## Initial next-agent sequence (historical plan)
+
+Step 3's **offline collector foundation** is implemented in issue #8; source-specific live onboarding and smoke tests remain separate tasks. This sequence describes roadmap order, not an assertion that any real publisher has been collected.
 
 1. Verify and identify the first dictated source (needs exact name/URL).
 2. Inspect War Reporter code and document reusable vs non-reusable modules.

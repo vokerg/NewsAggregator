@@ -1,0 +1,28 @@
+name: Collector foundation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  offline-collector:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and unit tests (stdlib only)
+        run: |
+          python -m compileall -q newsagg tests
+          python -m unittest discover -s tests -v
+      - name: Two consecutive offline fixture runs
+        run: |
+          python -m newsagg --registry tests/fixtures/registry.json --fixture-map tests/fixtures/fixtures-map.json --output "$RUNNER_TEMP/newsagg" --at 2026-11-18T08:00:00Z
+          python -m newsagg --registry tests/fixtures/registry.json --fixture-map tests/fixtures/fixtures-map.json --output "$RUNNER_TEMP/newsagg" --at 2026-11-18T08:00:00Z
+          python -c 'import json,os,pathlib; p=pathlib.Path(os.environ["RUNNER_TEMP"])/"newsagg/public/items.ndjson"; rows=[json.loads(s) for s in p.read_text().splitlines()]; assert len(rows)==4 and len({r["item_id"] for r in rows})==4'
