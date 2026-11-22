@@ -1,0 +1,40 @@
+{
+  "name": "news-aggregator-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "ng serve",
+    "build": "ng build",
+    "build:pages": "ng build --base-href /NewsAggregator/",
+    "test": "ng test",
+    "test:ci": "ng test --watch=false",
+    "lint": "eslint \"src/**/*.{ts,html}\"",
+    "format": "prettier --write \"src/**/*.{ts,html,css}\" \"*.{json,mjs}\" \"public/**/*.json\"",
+    "format:check": "prettier --check \"src/**/*.{ts,html,css}\" \"*.{json,mjs}\" \"public/**/*.json\""
+  },
+  "engines": {
+    "node": "^22.22.3 || ^24.15.0 || ^26.0.0"
+  },
+  "dependencies": {
+    "@angular/common": "22.2.6",
+    "@angular/compiler": "22.2.6",
+    "@angular/core": "22.2.6",
+    "@angular/platform-browser": "22.2.6",
+    "@angular/router": "22.2.6",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "22.2.6",
+    "@angular/cli": "22.2.6",
+    "@angular/compiler-cli": "22.2.6",
+    "angular-eslint": "22.8.0",
+    "eslint": "9.39.0",
+    "jsdom": "30.0.0",
+    "prettier": "3.6.2",
+    "typescript": "6.0.2",
+    "typescript-eslint": "8.56.0",
+    "vitest": "5.0.0"
+  }
+}
