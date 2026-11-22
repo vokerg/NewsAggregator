@@ -73,7 +73,11 @@ class RegistryTests(unittest.TestCase):
     def test_url_rules_and_identity(self):
         for url in ["http://news.example.org/x", "https://user:pass@news.example.org/x",
                     "https://127.0.0.1/x", "https://news.example.org:8443/x",
-                    "https://news.example.org/x?access_token=secret"]:
+                    "https://news.example.org/x?access_token=secret",
+                    "https://news.example.org/x?client_secret=secret",
+                    "https://news.example.org/x?session_id=secret",
+                    "https://news.example.org/x?X-Amz-Signature=secret",
+                    "https://news.example.org/x?refreshToken=secret"]:
             with self.assertRaises(ValidationError, msg=url):
                 require_url(url)
         self.assertEqual(canonical_url("https://news.example.org/a?utm_source=x&n=1#z"), "https://news.example.org/a?n=1")
@@ -110,6 +114,21 @@ class AdapterTests(unittest.TestCase):
         self.assertEqual(body, "Article heading First public-ish sentence. Second sentence.")
         self.assertNotIn("SECRET_TOKEN", body)
         self.assertEqual(published, "2026-11-18T07:00:00Z")
+
+    def test_body_void_tags_in_hidden_nodes_do_not_hide_visible_text(self):
+        html = ('<article><nav><img src="/x">Hidden <span>navigation</span></nav>'
+                '<p>Visible first.</p><script>SECRET_TOKEN</script>'
+                '<p>Visible second.</p></article>')
+        body, _ = extract_body(html)
+        self.assertEqual(body, "Visible first. Visible second.")
+        self.assertNotIn("SECRET_TOKEN", body or "")
+        self.assertNotIn("navigation", body or "")
+
+    def test_body_malformed_nested_tags_do_not_leak_hidden_text(self):
+        html = ('<article><nav><span>Hidden</span></nav>'
+                '<p>Visible</p></article> Outside')
+        body, _ = extract_body(html)
+        self.assertEqual(body, "Visible")
 
     def test_invalid_article_link_is_skipped(self):
         result, _ = parse_index('<article><a href="https://evil.org/secret">Story</a></article>', "https://news.example.org/news", sources()[1])
@@ -259,6 +278,19 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(len(rows), 4)
             state = json.loads((Path(d) / "state.json").read_text())
             self.assertIsNone(state["sources"]["example-rss"].get("cursor"))
+
+    def test_body_parser_exception_preserves_headline_metadata(self):
+        with tempfile.TemporaryDirectory() as d:
+            with patch("newsagg.runtime.extract_body", side_effect=ValueError("secret=private")):
+                report = run(sources(), fixtures(), Path(d), now=AT)
+            self.assertEqual(report["status"], "partial")
+            self.assertEqual(report["sources"]["example-rss"]["status"], "partial")
+            self.assertEqual(report["sources"]["example-rss"]["error_code"], "body_unavailable")
+            rows = _read_items(Path(d) / "public/items.ndjson")
+            self.assertEqual(len(rows), 4)
+            self.assertEqual(sum(row["body_extraction_status"] == "failed" for row in rows.values()), 2)
+            public = (Path(d) / "public/status.json").read_text()
+            self.assertNotIn("secret=private", public)
 
     def test_public_projection_rejects_secrets_and_body(self):
         with self.assertRaises(ValidationError):
