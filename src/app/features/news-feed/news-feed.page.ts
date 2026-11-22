@@ -13,7 +13,7 @@ import { NewsCard } from "./news-card";
 
 type FeedState =
   | { kind: "loading" }
-  | { kind: "ready"; items: readonly NewsItem[] }
+  | { kind: "ready"; revision: string; items: readonly NewsItem[] }
   | { kind: "error" };
 
 @Component({
@@ -44,7 +44,11 @@ export class NewsFeedPage {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (catalog) =>
-          this.state.set({ kind: "ready", items: catalog.items }),
+          this.state.set({
+            kind: "ready",
+            revision: catalog.revision,
+            items: catalog.items,
+          }),
         error: () => this.state.set({ kind: "error" }),
       });
   }

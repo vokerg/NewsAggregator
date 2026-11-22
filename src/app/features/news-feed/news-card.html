@@ -1,30 +1,38 @@
 <article class="article-card">
   <p class="source">{{ item().source_name }}</p>
-  <h2>{{ item().title }}</h2>
+  <h2><a [routerLink]="['/news', item().id]">{{ item().title }}</a></h2>
   <p class="attribution">
-    <strong>View from:</strong> {{ item().perspective_ids.join(', ') ||
-    'Unknown' }}
+    <strong>View from:</strong> {{ item().perspective_ids.join(', ') || 'Unknown' }}
   </p>
   <p class="attribution">
-    <strong>About:</strong> {{ item().about_country_codes.join(', ') ||
-    'Unknown' }}
+    <strong>About:</strong> {{ item().about_country_codes.join(', ') || 'Unknown' }}
   </p>
+  @if (item().tags; as tags) {
+    @if (tags.length) {
+      <ul class="tags" aria-label="Article tags">
+        @for (tag of tags; track tag) {
+          <li>{{ tag }}</li>
+        }
+      </ul>
+    }
+  }
   <p class="meta">
     @if (item().published_at; as published) {
-    <time [attr.datetime]="published"
-      >{{ published | date: 'medium':'UTC' }} UTC</time
-    >
+      <time [attr.datetime]="published">{{ published | date: 'medium':'UTC' }} UTC</time>
     } @else {
-    <span>Publication date unknown</span>
+      <span>Publication date unknown</span>
     }
     <span aria-hidden="true"> · </span>
     @if (item().extraction_status === 'extracted') {
-    <span>Body extracted (availability depends on rights)</span>
+      <span>Body extracted (public access depends on rights)</span>
     } @else {
-    <span>Body unavailable</span>
+      <span>Body unavailable</span>
     }
   </p>
-  <a [href]="item().original_url" target="_blank" rel="noopener noreferrer">
-    Open original <span aria-hidden="true">↗</span>
-  </a>
+  <div class="card-actions">
+    <a [routerLink]="['/news', item().id]">Read details</a>
+    <a [href]="item().original_url" target="_blank" rel="noopener noreferrer">
+      Open original <span aria-hidden="true">↗</span>
+    </a>
+  </div>
 </article>
