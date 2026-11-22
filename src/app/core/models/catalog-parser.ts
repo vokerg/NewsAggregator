@@ -125,7 +125,8 @@ function isNewsItem(value: unknown): value is NewsItem {
     !isRecord(value) ||
     (!hasExactKeys(value, ITEM_KEYS) &&
       !hasExactKeys(value, [...ITEM_KEYS, "tags"]))
-  ) return false;
+  )
+    return false;
 
   return (
     typeof value["id"] === "string" &&

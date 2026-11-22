@@ -34,13 +34,20 @@ describe("parseCatalog", () => {
   });
 
   it("accepts optional tags but rejects unsafe IDs and unexpected metadata", () => {
-    const fixture = { schema_version: 1, revision: "fixture", items: [{ ...article, tags: ["world"] }] };
+    const fixture = {
+      schema_version: 1,
+      revision: "fixture",
+      items: [{ ...article, tags: ["world"] }],
+    };
     expect(parseCatalog(fixture).items[0]?.tags).toEqual(["world"]);
     expect(() =>
       parseCatalog({ ...fixture, items: [{ ...article, id: "../escape" }] }),
     ).toThrow();
     expect(() =>
-      parseCatalog({ ...fixture, items: [{ ...article, extra: "not public" }] }),
+      parseCatalog({
+        ...fixture,
+        items: [{ ...article, extra: "not public" }],
+      }),
     ).toThrow();
   });
 

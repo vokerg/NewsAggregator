@@ -13,7 +13,9 @@ const available = {
 
 describe("parseArticleDocument", () => {
   it("accepts bounded plain-text synthetic or licensed content", () => {
-    expect(parseArticleDocument(available, "demo-one").body).toEqual(available.body);
+    expect(parseArticleDocument(available, "demo-one").body).toEqual(
+      available.body,
+    );
     expect(
       parseArticleDocument(
         {
@@ -31,16 +33,25 @@ describe("parseArticleDocument", () => {
       item_id: "demo-one",
       body: { kind: "unavailable", reason: "rights" },
     };
-    expect(parseArticleDocument(restricted, "demo-one").body).toEqual(restricted.body);
+    expect(parseArticleDocument(restricted, "demo-one").body).toEqual(
+      restricted.body,
+    );
   });
 
   it("rejects wrong IDs, unexpected fields and unsupported versions", () => {
     expect(() => parseArticleDocument(available, "other-id")).toThrow();
-    expect(() => parseArticleDocument({ ...available, api_key: "secret" }, "demo-one")).toThrow();
-    expect(() => parseArticleDocument({ ...available, schema_version: 2 }, "demo-one")).toThrow();
+    expect(() =>
+      parseArticleDocument({ ...available, api_key: "secret" }, "demo-one"),
+    ).toThrow();
+    expect(() =>
+      parseArticleDocument({ ...available, schema_version: 2 }, "demo-one"),
+    ).toThrow();
     expect(() =>
       parseArticleDocument(
-        { ...available, body: { kind: "unavailable", reason: "rights", text: "oops" } },
+        {
+          ...available,
+          body: { kind: "unavailable", reason: "rights", text: "oops" },
+        },
         "demo-one",
       ),
     ).toThrow();
@@ -49,13 +60,33 @@ describe("parseArticleDocument", () => {
   it("rejects unlicensed, unbounded and invalid body payloads", () => {
     for (const body of [
       { kind: "available", paragraphs: ["Missing publication basis"] },
-      { kind: "available", publication_basis: "unknown", paragraphs: ["No rights"] },
+      {
+        kind: "available",
+        publication_basis: "unknown",
+        paragraphs: ["No rights"],
+      },
       { kind: "available", publication_basis: "synthetic", paragraphs: [] },
-      { kind: "available", publication_basis: "synthetic", paragraphs: ["x".repeat(4001)] },
-      { kind: "available", publication_basis: "synthetic", paragraphs: ["bad\u0000value"] },
-      { kind: "available", publication_basis: "synthetic", paragraphs: Array(61).fill("text") },
+      {
+        kind: "available",
+        publication_basis: "synthetic",
+        paragraphs: ["x".repeat(4001)],
+      },
+      {
+        kind: "available",
+        publication_basis: "synthetic",
+        paragraphs: ["bad\u0000value"],
+      },
+      {
+        kind: "available",
+        publication_basis: "synthetic",
+        paragraphs: Array(61).fill("text"),
+      },
       { kind: "unavailable", reason: "unreviewed" },
-      { kind: "unavailable", reason: "rights", paragraphs: ["must be omitted"] },
+      {
+        kind: "unavailable",
+        reason: "rights",
+        paragraphs: ["must be omitted"],
+      },
     ]) {
       expect(() =>
         parseArticleDocument({ ...available, body }, "demo-one"),

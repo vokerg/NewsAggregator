@@ -26,7 +26,10 @@ const article: NewsArticle = {
   body: {
     kind: "available",
     publication_basis: "synthetic",
-    paragraphs: ["<script>alert('not executed')</script>", "Invented content only."],
+    paragraphs: [
+      "<script>alert('not executed')</script>",
+      "Invented content only.",
+    ],
   },
 };
 
@@ -36,7 +39,11 @@ async function setup(loadArticle: ReturnType<typeof vi.fn>) {
       provideRouter(routes),
       {
         provide: NEWS_READ_REPOSITORY,
-        useValue: { loadCatalog: () => of({ schema_version: 1, revision: "fixture", items: [] }), loadArticle },
+        useValue: {
+          loadCatalog: () =>
+            of({ schema_version: 1, revision: "fixture", items: [] }),
+          loadArticle,
+        },
       },
     ],
   });
@@ -52,7 +59,7 @@ describe("NewsDetailPage", () => {
     expect(page.textContent).toContain("Invented example");
     expect(page.textContent).toContain("dk-media");
     expect(page.textContent).toContain("UA");
-    expect(page.textContent).toContain("Original synthetic");
+    expect(page.textContent).toContain("Invented content only.");
     expect(page.querySelector(".body-text script")).toBeNull();
     expect(page.querySelector(".body-text")?.textContent).toContain("<script>");
     const original = page.querySelector('a[href^="https://"]');
@@ -68,9 +75,13 @@ describe("NewsDetailPage", () => {
     };
     const harness = await setup(vi.fn(() => of(unavailable)));
     await harness.navigateByUrl("/news/demo-one", NewsDetailPage);
-    expect(harness.routeNativeElement?.textContent).toContain("not publicly available");
+    expect(harness.routeNativeElement?.textContent).toContain(
+      "not publicly available",
+    );
     expect(harness.routeNativeElement?.textContent).toContain("rights");
-    expect((harness.routeNativeElement as HTMLElement).querySelector(".body-text")).toBeNull();
+    expect(
+      (harness.routeNativeElement as HTMLElement).querySelector(".body-text"),
+    ).toBeNull();
   });
 
   it("distinguishes missing items from network errors and retries failures", async () => {
@@ -81,17 +92,21 @@ describe("NewsDetailPage", () => {
       .mockReturnValueOnce(of(article));
     const harness = await setup(loadArticle);
     await harness.navigateByUrl("/news/missing", NewsDetailPage);
-    expect(harness.routeNativeElement?.textContent).toContain("Article not found");
+    expect(harness.routeNativeElement?.textContent).toContain(
+      "Article not found",
+    );
 
     await harness.navigateByUrl("/news/demo-one", NewsDetailPage);
     expect(harness.routeNativeElement?.textContent).toContain("Could not load");
-    const retryButton = (harness.routeNativeElement as HTMLElement).querySelector(
-      "button",
-    ) as HTMLButtonElement;
+    const retryButton = (
+      harness.routeNativeElement as HTMLElement
+    ).querySelector("button") as HTMLButtonElement;
     retryButton.click();
     await harness.fixture.whenStable();
     harness.detectChanges();
-    expect(harness.routeNativeElement?.textContent).toContain("Invented content only");
+    expect(harness.routeNativeElement?.textContent).toContain(
+      "Invented content only",
+    );
     expect(loadArticle).toHaveBeenCalledTimes(3);
   });
 });

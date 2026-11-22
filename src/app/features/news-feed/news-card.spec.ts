@@ -35,7 +35,9 @@ describe("NewsCard", () => {
     expect(article.textContent).toContain("politics");
     expect(article.textContent).toContain("View from:");
     expect(article.textContent).toContain("About:");
-    expect(article.querySelector('a[href="/news/one"]')?.textContent).toContain("A headline");
+    expect(article.querySelector('a[href="/news/one"]')?.textContent).toContain(
+      "A headline",
+    );
     const link = article.querySelector('a[href^="https://"]');
     expect(link?.getAttribute("href")).toBe(item.original_url);
     expect(link?.getAttribute("rel")).toBe("noopener noreferrer");

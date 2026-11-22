@@ -14,7 +14,10 @@ export class StaticNewsRepository implements NewsReadRepository {
 
   loadCatalog(): Observable<NewsCatalog> {
     // document.baseURI respects the Pages /NewsAggregator/ project subpath.
-    const url = new URL("catalog/manifest.json", this.document.baseURI).toString();
+    const url = new URL(
+      "catalog/manifest.json",
+      this.document.baseURI,
+    ).toString();
     return this.http.get<unknown>(url).pipe(map(parseCatalog));
   }
 
@@ -32,7 +35,10 @@ export class StaticNewsRepository implements NewsReadRepository {
         return this.http.get<unknown>(url).pipe(
           map((value): NewsArticle => {
             const document = parseArticleDocument(value, item.id);
-            if (document.body.kind === "available" && item.extraction_status !== "extracted") {
+            if (
+              document.body.kind === "available" &&
+              item.extraction_status !== "extracted"
+            ) {
               throw new Error("Public body conflicts with extraction status");
             }
             return { item, revision: catalog.revision, body: document.body };

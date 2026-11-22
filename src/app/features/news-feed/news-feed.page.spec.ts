@@ -62,10 +62,14 @@ describe("NewsFeedPage", () => {
     });
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain("Demonstration data only");
+    expect(fixture.nativeElement.textContent).toContain(
+      "Demonstration data only",
+    );
     expect(fixture.nativeElement.textContent).toContain("1 articles");
     expect(
-      (fixture.nativeElement as HTMLElement).querySelector('a[href="/news/demo-one"]'),
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'a[href="/news/demo-one"]',
+      ),
     ).not.toBeNull();
     http.verify();
   });

@@ -44,7 +44,9 @@ describe("StaticNewsRepository", () => {
     const { repository, http } = setup();
     let revision: string | undefined;
 
-    repository.loadCatalog().subscribe((catalog) => (revision = catalog.revision));
+    repository
+      .loadCatalog()
+      .subscribe((catalog) => (revision = catalog.revision));
 
     const request = http.expectOne(
       "https://example.org/NewsAggregator/catalog/manifest.json",
@@ -61,14 +63,19 @@ describe("StaticNewsRepository", () => {
     let text: string | undefined;
     repository.loadArticle("demo-one").subscribe((article) => {
       title = article?.item.title;
-      text = article?.body.kind === "available" ? article.body.paragraphs[0] : undefined;
+      text =
+        article?.body.kind === "available"
+          ? article.body.paragraphs[0]
+          : undefined;
     });
 
-    http.expectOne("https://example.org/NewsAggregator/catalog/manifest.json").flush({
-      schema_version: 1,
-      revision: "fixture-reader-v1",
-      items: [item],
-    });
+    http
+      .expectOne("https://example.org/NewsAggregator/catalog/manifest.json")
+      .flush({
+        schema_version: 1,
+        revision: "fixture-reader-v1",
+        items: [item],
+      });
     const detail = http.expectOne(
       "https://example.org/NewsAggregator/catalog/items/demo-one.json",
     );
@@ -90,12 +97,16 @@ describe("StaticNewsRepository", () => {
   it("returns null for an unknown item without requesting a detail asset", () => {
     const { repository, http } = setup();
     let result: unknown;
-    repository.loadArticle("../not-an-item").subscribe((value) => (result = value));
-    http.expectOne("https://example.org/NewsAggregator/catalog/manifest.json").flush({
-      schema_version: 1,
-      revision: "fixture",
-      items: [item],
-    });
+    repository
+      .loadArticle("../not-an-item")
+      .subscribe((value) => (result = value));
+    http
+      .expectOne("https://example.org/NewsAggregator/catalog/manifest.json")
+      .flush({
+        schema_version: 1,
+        revision: "fixture",
+        items: [item],
+      });
     http.verify();
     expect(result).toBeNull();
   });
@@ -106,22 +117,26 @@ describe("StaticNewsRepository", () => {
     repository.loadArticle("demo-one").subscribe({
       error: () => (failed = true),
     });
-    http.expectOne("https://example.org/NewsAggregator/catalog/manifest.json").flush({
-      schema_version: 1,
-      revision: "fixture",
-      items: [{ ...item, extraction_status: "failed" }],
-    });
-    http.expectOne(
-      "https://example.org/NewsAggregator/catalog/items/demo-one.json",
-    ).flush({
-      schema_version: 1,
-      item_id: "demo-one",
-      body: {
-        kind: "available",
-        publication_basis: "synthetic",
-        paragraphs: ["Should not be public"],
-      },
-    });
+    http
+      .expectOne("https://example.org/NewsAggregator/catalog/manifest.json")
+      .flush({
+        schema_version: 1,
+        revision: "fixture",
+        items: [{ ...item, extraction_status: "failed" }],
+      });
+    http
+      .expectOne(
+        "https://example.org/NewsAggregator/catalog/items/demo-one.json",
+      )
+      .flush({
+        schema_version: 1,
+        item_id: "demo-one",
+        body: {
+          kind: "available",
+          publication_basis: "synthetic",
+          paragraphs: ["Should not be public"],
+        },
+      });
     http.verify();
     expect(failed).toBe(true);
   });

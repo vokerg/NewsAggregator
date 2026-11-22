@@ -8,7 +8,15 @@ import {
 } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, RouterLink } from "@angular/router";
-import { catchError, combineLatest, map, of, startWith, Subject, switchMap } from "rxjs";
+import {
+  catchError,
+  combineLatest,
+  map,
+  of,
+  startWith,
+  Subject,
+  switchMap,
+} from "rxjs";
 import { NEWS_READ_REPOSITORY } from "../../core/data-access/news-read-repository";
 import { NewsArticle } from "../../core/models/news";
 
@@ -34,7 +42,10 @@ export class NewsDetailPage {
   readonly state = signal<DetailState>({ kind: "loading" });
 
   constructor() {
-    combineLatest([this.route.paramMap, this.retries.pipe(startWith(undefined))])
+    combineLatest([
+      this.route.paramMap,
+      this.retries.pipe(startWith(undefined)),
+    ])
       .pipe(
         switchMap(([params]) => {
           this.state.set({ kind: "loading" });
@@ -42,8 +53,9 @@ export class NewsDetailPage {
           if (!id) return of<DetailState>({ kind: "missing" });
 
           return this.repository.loadArticle(id).pipe(
-            map((article): DetailState =>
-              article ? { kind: "ready", article } : { kind: "missing" },
+            map(
+              (article): DetailState =>
+                article ? { kind: "ready", article } : { kind: "missing" },
             ),
             catchError(() => of<DetailState>({ kind: "error" })),
           );

@@ -10,16 +10,9 @@
       "original_url": "https://example.org/demo/danish-report",
       "published_at": "2026-11-18T08:30:00Z",
       "first_seen_at": "2026-11-18T09:00:00Z",
-      "perspective_ids": [
-        "dk-media"
-      ],
-      "about_country_codes": [
-        "UA"
-      ],
-      "tags": [
-        "world",
-        "illustration"
-      ],
+      "perspective_ids": ["dk-media"],
+      "about_country_codes": ["UA"],
+      "tags": ["world", "illustration"],
       "extraction_status": "extracted"
     },
     {
@@ -30,15 +23,9 @@
       "original_url": "https://example.org/demo/economy-report",
       "published_at": null,
       "first_seen_at": "2026-11-18T10:00:00Z",
-      "perspective_ids": [
-        "md-media"
-      ],
-      "about_country_codes": [
-        "MD"
-      ],
-      "tags": [
-        "economy"
-      ],
+      "perspective_ids": ["md-media"],
+      "about_country_codes": ["MD"],
+      "tags": ["economy"],
       "extraction_status": "unavailable"
     }
   ]

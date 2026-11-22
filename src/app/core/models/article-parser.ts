@@ -7,7 +7,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+function hasExactKeys(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+): boolean {
   return (
     Object.keys(value).length === keys.length &&
     keys.every((key) => Object.prototype.hasOwnProperty.call(value, key))
@@ -28,7 +31,10 @@ function isPlainText(value: unknown): value is string {
  * Only narrowly bounded, explicitly publishable plain text is accepted.
  * The upstream producer must independently verify the claimed rights.
  */
-export function parseArticleDocument(value: unknown, expectedId: string): NewsArticleDocument {
+export function parseArticleDocument(
+  value: unknown,
+  expectedId: string,
+): NewsArticleDocument {
   if (
     !isRecord(value) ||
     !hasExactKeys(value, ["schema_version", "item_id", "body"]) ||
@@ -44,20 +50,26 @@ export function parseArticleDocument(value: unknown, expectedId: string): NewsAr
     const paragraphs = body["paragraphs"];
     if (
       !hasExactKeys(body, ["kind", "publication_basis", "paragraphs"]) ||
-      !["synthetic", "licensed", "public_domain"].includes(String(body["publication_basis"])) ||
+      !["synthetic", "licensed", "public_domain"].includes(
+        String(body["publication_basis"]),
+      ) ||
       !Array.isArray(paragraphs) ||
       paragraphs.length === 0 ||
       paragraphs.length > MAX_PARAGRAPHS ||
       !paragraphs.every(isPlainText) ||
-      paragraphs.reduce((total: number, paragraph: string) => total + paragraph.length, 0) >
-        MAX_BODY_LENGTH
+      paragraphs.reduce(
+        (total: number, paragraph: string) => total + paragraph.length,
+        0,
+      ) > MAX_BODY_LENGTH
     ) {
       throw new Error("Unsafe or unlicensed public article text");
     }
   } else if (
     body["kind"] !== "unavailable" ||
     !hasExactKeys(body, ["kind", "reason"]) ||
-    !["rights", "not_extracted", "failed", "unknown"].includes(String(body["reason"]))
+    !["rights", "not_extracted", "failed", "unknown"].includes(
+      String(body["reason"]),
+    )
   ) {
     throw new Error("Invalid public article availability");
   }

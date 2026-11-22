@@ -8,41 +8,32 @@
     </p>
   </div>
 
-  @if (state(); as feed) {
-    @switch (feed.kind) {
-      @case ('loading') {
-        <p role="status">Loading news catalog…</p>
-      }
-      @case ('error') {
-        <div role="alert" class="status-panel">
-          <h2>News unavailable</h2>
-          <p>Could not load the public catalog. Check your connection and retry.</p>
-          <button type="button" (click)="reload()">Retry loading</button>
-        </div>
-      }
-      @case ('ready') {
-        @if (feed.revision.startsWith('fixture-')) {
-          <p class="demo-notice" role="note">
-            Demonstration data only: these are invented articles, not collected news.
-          </p>
-        }
-        @if (feed.items.length === 0) {
-          <div class="status-panel" role="status">
-            <h2>No articles yet</h2>
-            <p>
-              There are no published articles in the public catalog. Sources are not
-              collected automatically by this website.
-            </p>
-          </div>
-        } @else {
-          <p class="result-count">{{ count() }} articles</p>
-          <ul class="card-grid" aria-label="News articles">
-            @for (item of feed.items; track item.id) {
-              <li><app-news-card [item]="item" /></li>
-            }
-          </ul>
-        }
-      }
+  @if (state(); as feed) { @switch (feed.kind) { @case ('loading') {
+  <p role="status">Loading news catalog…</p>
+  } @case ('error') {
+  <div role="alert" class="status-panel">
+    <h2>News unavailable</h2>
+    <p>Could not load the public catalog. Check your connection and retry.</p>
+    <button type="button" (click)="reload()">Retry loading</button>
+  </div>
+  } @case ('ready') { @if (feed.revision.startsWith('fixture-')) {
+  <p class="demo-notice" role="note">
+    Demonstration data only: these are invented articles, not collected news.
+  </p>
+  } @if (feed.items.length === 0) {
+  <div class="status-panel" role="status">
+    <h2>No articles yet</h2>
+    <p>
+      There are no published articles in the public catalog. Sources are not
+      collected automatically by this website.
+    </p>
+  </div>
+  } @else {
+  <p class="result-count">{{ count() }} articles</p>
+  <ul class="card-grid" aria-label="News articles">
+    @for (item of feed.items; track item.id) {
+    <li><app-news-card [item]="item" /></li>
     }
-  }
+  </ul>
+  } } } }
 </section>
