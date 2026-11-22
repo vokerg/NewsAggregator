@@ -46,7 +46,7 @@ NewsAggregator — персональный агрегатор мировых н
 
 ## Следующий шаг
 
-Решение об Angular и целевом PWA **закреплено в документации**, UI scaffold создан в #1; PWA и GitHub Pages **не развёрнуты и не проверены**. Для начала реализации использовать отдельную задачу с проверяемым CLI scaffold, маршрутизацией, тестами и сборкой; не считать выбор стека готовым приложением.
+Angular scaffold, маршрутизация, тесты и сборка реализованы в #1. PWA и GitHub Pages **не развёрнуты и не проверены**. Следующий UI-этап — reader и фильтры в отдельных issues; не считать пустую фикстуру реальной новостной лентой.
 
 Подтвердить первый источник и его URL, проверить на одном RSS- и одном web-источнике список заголовков, извлечение body, метки времени и повторяемость сохранения. Затем протестировать два этапа LLM на малом наборе с учётом цены и точности. Никаких утверждений о работающем сборе до фактического прогона.
 
@@ -78,6 +78,6 @@ npm run build:pages
 npm start
 ```
 
-The local development URL is `http://localhost:4200/#/news`. The production build sets `<base href="/NewsAggregator/">` and uses hash routes (`/NewsAggregator/#/news`) to avoid GitHub Pages history-mode deep-link 404s. The `build:pages` command checks *compile-time path configuration only*; neither publishing nor live Pages checks are enabled. There is no service worker, installable PWA, backend read API, real catalog, or ingestion scheduler. Unit tests use the Angular Vitest builder and mocked HTTP; GitHub Actions provides the compatible Node runtime for CI.
+The local development URL is `http://localhost:4200/#/news`. The production build sets `<base href="/NewsAggregator/">` and uses hash routes (`/NewsAggregator/#/news`) to avoid GitHub Pages history-mode deep-link 404s. The `build:pages` command checks *compile-time path configuration only*; neither publishing nor live Pages checks are enabled. There is no service worker, installable PWA, backend read API, real catalog, or ingestion scheduler. Unit tests use the Angular Vitest builder and mocked HTTP; GitHub Actions provides the compatible Node runtime for CI. The v1 catalog is a bounded metadata projection, not the collector's raw NDJSON schema; issue #4 must define and validate the producer-to-reader transformation. The renderer rejects unrecognized fields, invalid dates and unsafe publisher URLs.
 
 Future work: issue #2 implements article detail and fixture-driven reader semantics, #4 implements partitioned read-model publishing, and #5 addresses PWA installation and freshness. Do not treat the temporary empty manifest as a production pagination format.

@@ -32,3 +32,28 @@ describe("NewsCard", () => {
     expect(link?.getAttribute("rel")).toBe("noopener noreferrer");
   });
 });
+
+describe("NewsCard timestamp", () => {
+  it("shows publication time with explicit UTC context", () => {
+    const item: NewsItem = {
+      id: "two",
+      title: "Publisher headline",
+      source_id: "publisher",
+      source_name: "Publisher",
+      original_url: "https://example.org/story",
+      published_at: "2026-11-18T08:30:00Z",
+      first_seen_at: "2026-11-18T09:00:00Z",
+      perspective_ids: ["dk-media"],
+      about_country_codes: [],
+      extraction_status: "extracted",
+    };
+    TestBed.configureTestingModule({ imports: [NewsCard] });
+    const fixture = TestBed.createComponent(NewsCard);
+    fixture.componentRef.setInput("item", item);
+    fixture.detectChanges();
+    const time = (fixture.nativeElement as HTMLElement).querySelector("time");
+    expect(time?.getAttribute("datetime")).toBe(item.published_at);
+    expect(time?.textContent).toContain("UTC");
+    expect(fixture.nativeElement.textContent).toContain("Body extracted");
+  });
+});

@@ -16,6 +16,7 @@
   --color-border: #cfdbdd;
   --color-surface: #fff;
   --color-background: #f5f8f7;
+  --color-link: #126386;
   background: var(--color-background);
   color: var(--color-text);
 }
@@ -31,7 +32,7 @@ body {
 }
 
 a {
-  color: #126386;
+  color: var(--color-link);
   text-underline-offset: 0.17em;
 }
 
@@ -78,5 +79,6 @@ p {
     --color-border: #42616b;
     --color-background: #0c2029;
     --color-surface: #17343e;
+    --color-link: #94ebd4;
   }
 }

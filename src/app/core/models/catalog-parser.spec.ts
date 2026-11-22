@@ -49,3 +49,77 @@ describe("parseCatalog", () => {
     ).toThrow();
   });
 });
+
+describe("catalog safety boundaries", () => {
+  const fixture = { schema_version: 1, revision: "fixture", items: [article] };
+
+  it("rejects extra raw body fields and unknown root keys", () => {
+    expect(() =>
+      parseCatalog({
+        ...fixture,
+        items: [{ ...article, body_text: "not licensed for publication" }],
+      }),
+    ).toThrow();
+    expect(() =>
+      parseCatalog({ ...fixture, access_token: "do-not-publish" }),
+    ).toThrow();
+  });
+
+  it("rejects invalid dates while preserving an explicit unknown date", () => {
+    expect(() =>
+      parseCatalog({
+        ...fixture,
+        items: [{ ...article, published_at: "2026-02-30T10:00:00Z" }],
+      }),
+    ).toThrow();
+    expect(() =>
+      parseCatalog({
+        ...fixture,
+        items: [{ ...article, first_seen_at: "2026-11-18" }],
+      }),
+    ).toThrow();
+    expect(parseCatalog(fixture).items[0]?.published_at).toBeNull();
+  });
+
+  it("rejects unsafe publisher URLs and allows an ordinary original URL", () => {
+    for (const original_url of [
+      "http://example.org/article",
+      "https://user:pass@example.org/article",
+      "https://example.org:8443/article",
+      "https://localhost/article",
+      "https://127.0.0.1/article",
+      "https://example.org/article?access_token=123",
+      "https://example.org/article#session_id=123",
+    ]) {
+      expect(() =>
+        parseCatalog({
+          ...fixture,
+          items: [{ ...article, original_url }],
+        }),
+      ).toThrow();
+    }
+
+    const original_url = "https://example.org/article?edition=one#section-2";
+    expect(
+      parseCatalog({
+        ...fixture,
+        items: [{ ...article, original_url }],
+      }).items[0]?.original_url,
+    ).toBe(original_url);
+  });
+
+  it("rejects duplicate item IDs and oversized catalog pages", () => {
+    expect(() =>
+      parseCatalog({ ...fixture, items: [article, article] }),
+    ).toThrow();
+    expect(() =>
+      parseCatalog({
+        ...fixture,
+        items: Array.from({ length: 501 }, (_, index) => ({
+          ...article,
+          id: `example-${index}`,
+        })),
+      }),
+    ).toThrow();
+  });
+});

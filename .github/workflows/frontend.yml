@@ -3,7 +3,7 @@ name: Frontend checks
 on:
   pull_request:
   push:
-    branches: [main, feat/issue-1-angular-foundation]
+    branches: [main]
 
 permissions:
   contents: read

@@ -12,7 +12,7 @@
   <p class="meta">
     @if (item().published_at; as published) {
     <time [attr.datetime]="published"
-      >{{ published | date: 'mediumDate' }}</time
+      >{{ published | date: 'medium':'UTC' }} UTC</time
     >
     } @else {
     <span>Publication date unknown</span>
