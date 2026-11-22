@@ -39,3 +39,9 @@ a {
   margin-top: auto;
   font-weight: 700;
 }
+
+.attribution {
+  margin: 0.25rem 0;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}

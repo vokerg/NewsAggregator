@@ -71,7 +71,7 @@ Pinned primary versions: Angular/CLI **22.2.6**, TypeScript **6.0.2**, Node **24
 
 ```bash
 nvm use                     # Node 24.15.0 from .nvmrc
-npm install                 # npm ci once a lockfile is committed
+npm ci                      # Reproducible install from committed package-lock.json
 npm run lint
 npm run test:ci
 npm run build:pages
