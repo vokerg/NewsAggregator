@@ -25,6 +25,21 @@ _SECRET = re.compile(
 )
 _SECRET_QUERY = {"key", "api_key", "apikey", "token", "access_token", "auth", "authorization", "password", "secret", "signature", "sig"}
 _TRACKING = {"fbclid", "gclid", "mc_cid", "mc_eid"}
+# Publisher links may contain bearer/session credentials under many common names.
+# An unknown parameter is not proof of safety; release artifacts still need review.
+_SENSITIVE_QUERY_SUFFIXES = (
+    "token", "apikey", "accesskey", "secret", "password", "session",
+    "sessionid", "sessionkey", "signature", "credential", "credentials",
+    "authorization", "jwt", "cookie",
+)
+
+
+def _has_sensitive_query_name(key: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9]", "", key.casefold())
+    return (key.casefold() in _SECRET_QUERY
+            or any(normalized.endswith(suffix) for suffix in _SENSITIVE_QUERY_SUFFIXES))
+
+
 
 
 def utc_iso(value: datetime) -> str:
@@ -76,7 +91,7 @@ def require_url(url: str) -> str:
         ip = None
     if ip is not None and not ip.is_global:
         raise ValidationError("private IP URL")
-    if any(k.casefold() in _SECRET_QUERY for k, _ in parse_qsl(parsed.query, keep_blank_values=True)):
+    if any(_has_sensitive_query_name(k) for k, _ in parse_qsl(parsed.query, keep_blank_values=True)):
         raise ValidationError("sensitive query parameter")
     return url
 
