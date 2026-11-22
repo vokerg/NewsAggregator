@@ -90,6 +90,7 @@ describe("catalog safety boundaries", () => {
       "https://127.0.0.1/article",
       "https://example.org/article?access_token=123",
       "https://example.org/article#session_id=123",
+      "https://example.org/article?sessionKey=123",
     ]) {
       expect(() =>
         parseCatalog({

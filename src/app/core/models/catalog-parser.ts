@@ -74,7 +74,7 @@ function hasSensitiveParam(name: string): boolean {
   return (
     normalized === "key" ||
     normalized === "auth" ||
-    /(?:token|apikey|accesskey|secret|password|session|signature|credential|authorization|cookie|jwt)$/.test(
+    /(?:token|apikey|accesskey|secret|password|session|sessionid|sessionkey|signature|credential|authorization|cookie|jwt)$/.test(
       normalized,
     )
   );

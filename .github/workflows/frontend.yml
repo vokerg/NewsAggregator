@@ -19,6 +19,8 @@ jobs:
           node-version: '24.15.0'
       - name: Install pinned dependencies
         run: npm ci --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
       - name: Format check
         run: npm run format:check
       - name: Lint
