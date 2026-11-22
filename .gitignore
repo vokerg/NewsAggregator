@@ -23,3 +23,9 @@ secrets/
 
 # Fixture and opt-in live collector output
 .local/
+
+# Angular development/build artifacts
+node_modules/
+.angular/
+dist/
+coverage/
