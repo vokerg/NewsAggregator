@@ -296,6 +296,22 @@ class RuntimeTests(unittest.TestCase):
             state = json.loads((Path(d) / "state.json").read_text())
             self.assertIsNone(state["sources"]["example-rss"].get("cursor"))
 
+    def test_article_date_survives_unavailable_body(self):
+        class MetadataOnlyBody:
+            def get(self, url, source):
+                if url.endswith("/stories/one"):
+                    return url, ('<html><head><meta property="article:published_time" '
+                                 'content="2026-11-18T10:00:00+01:00"></head><body>No article element</body></html>')
+                return fixtures().get(url, source)
+
+        with tempfile.TemporaryDirectory() as d:
+            report = run(sources(), MetadataOnlyBody(), Path(d), now=AT)
+            self.assertEqual(report["status"], "ok")
+            rows = _read_items(Path(d) / "public/items.ndjson")
+            article = next(row for row in rows.values() if row["original_url"].endswith("/stories/one"))
+            self.assertEqual(article["body_extraction_status"], "unavailable")
+            self.assertEqual(article["published_at"], "2026-11-18T09:00:00Z")
+
     def test_body_parser_exception_preserves_headline_metadata(self):
         with tempfile.TemporaryDirectory() as d:
             with patch("newsagg.runtime.extract_body", side_effect=ValueError("secret=private")):
