@@ -201,7 +201,10 @@ def run(registry: list[Source], fetcher, output: Path, *, now: datetime, force: 
                                 result["extracted"] += 1
                             else:
                                 body_status = "unavailable"
-                        except FetchError:
+                        except Exception:
+                            # Optional retrieval/parsing must never drop the discovered
+                            # headline, even if a publisher's malformed HTML crashes a
+                            # parser or the fixture transport fails unexpectedly.
                             body_status = "failed"
                             result["status"] = "partial"
                             result["error_code"] = "body_unavailable"
