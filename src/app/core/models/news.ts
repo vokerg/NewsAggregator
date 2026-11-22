@@ -13,7 +13,11 @@ export interface NewsItem {
   /** A publisher's perspective is not the geography of the event. */
   readonly perspective_ids: readonly string[];
   readonly about_country_codes: readonly string[];
-  readonly extraction_status: 'extracted' | 'unavailable' | 'failed' | 'not_requested';
+  readonly extraction_status:
+    | "extracted"
+    | "unavailable"
+    | "failed"
+    | "not_requested";
 }
 
 export interface NewsCatalog {

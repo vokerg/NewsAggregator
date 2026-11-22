@@ -3,15 +3,17 @@
   <h2>{{ item().title }}</h2>
   <p class="meta">
     @if (item().published_at; as published) {
-      <time [attr.datetime]="published">{{ published | date: 'mediumDate' }}</time>
+    <time [attr.datetime]="published"
+      >{{ published | date: 'mediumDate' }}</time
+    >
     } @else {
-      <span>Publication date unknown</span>
+    <span>Publication date unknown</span>
     }
     <span aria-hidden="true"> · </span>
     @if (item().extraction_status === 'extracted') {
-      <span>Body extracted (availability depends on rights)</span>
+    <span>Body extracted (availability depends on rights)</span>
     } @else {
-      <span>Body unavailable</span>
+    <span>Body unavailable</span>
     }
   </p>
   <a [href]="item().original_url" target="_blank" rel="noopener noreferrer">

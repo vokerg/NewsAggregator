@@ -1,25 +1,25 @@
-import angular from 'angular-eslint';
-import tseslint from 'typescript-eslint';
+import angular from "angular-eslint";
+import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ['dist/**', '.angular/**', 'coverage/**', 'node_modules/**'] },
+  { ignores: ["dist/**", ".angular/**", "coverage/**", "node_modules/**"] },
   {
-    files: ['src/**/*.ts'],
+    files: ["src/**/*.ts"],
     extends: [...angular.configs.tsRecommended],
     processor: angular.processInlineTemplates,
     rules: {
-      '@angular-eslint/directive-selector': [
-        'error',
-        { type: 'attribute', prefix: 'app', style: 'camelCase' },
+      "@angular-eslint/directive-selector": [
+        "error",
+        { type: "attribute", prefix: "app", style: "camelCase" },
       ],
-      '@angular-eslint/component-selector': [
-        'error',
-        { type: 'element', prefix: 'app', style: 'kebab-case' },
+      "@angular-eslint/component-selector": [
+        "error",
+        { type: "element", prefix: "app", style: "kebab-case" },
       ],
     },
   },
   {
-    files: ['src/**/*.html'],
+    files: ["src/**/*.html"],
     extends: [
       ...angular.configs.templateRecommended,
       ...angular.configs.templateAccessibility,
