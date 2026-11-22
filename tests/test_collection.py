@@ -299,7 +299,7 @@ class RuntimeTests(unittest.TestCase):
     def test_article_date_survives_unavailable_body(self):
         class MetadataOnlyBody:
             def get(self, url, source):
-                if url.endswith("/stories/one"):
+                if url.endswith("/stories/two"):
                     return url, ('<html><head><meta property="article:published_time" '
                                  'content="2026-11-18T10:00:00+01:00"></head><body>No article element</body></html>')
                 return fixtures().get(url, source)
@@ -308,7 +308,7 @@ class RuntimeTests(unittest.TestCase):
             report = run(sources(), MetadataOnlyBody(), Path(d), now=AT)
             self.assertEqual(report["status"], "ok")
             rows = _read_items(Path(d) / "public/items.ndjson")
-            article = next(row for row in rows.values() if row["original_url"].endswith("/stories/one"))
+            article = next(row for row in rows.values() if row["original_url"].endswith("/stories/two"))
             self.assertEqual(article["body_extraction_status"], "unavailable")
             self.assertEqual(article["published_at"], "2026-11-18T09:00:00Z")
 
