@@ -1,7 +1,7 @@
 import { TestBed } from "@angular/core/testing";
 import { provideRouter } from "@angular/router";
 import { RouterTestingHarness } from "@angular/router/testing";
-import { of, throwError } from "rxjs";
+import { of, Subject, throwError } from "rxjs";
 import { describe, expect, it, vi } from "vitest";
 import { NEWS_READ_REPOSITORY } from "../../core/data-access/news-read-repository";
 import { NewsArticle } from "../../core/models/news";
@@ -82,6 +82,55 @@ describe("NewsDetailPage", () => {
     expect(
       (harness.routeNativeElement as HTMLElement).querySelector(".body-text"),
     ).toBeNull();
+  });
+
+  it("keeps metadata and the original link available on body errors", async () => {
+    const failed: NewsArticle = {
+      ...article,
+      body: { kind: "load_error" },
+    };
+    const loadArticle = vi
+      .fn()
+      .mockReturnValueOnce(of(failed))
+      .mockReturnValueOnce(of(article));
+    const harness = await setup(loadArticle);
+    await harness.navigateByUrl("/news/demo-one", NewsDetailPage);
+    const page = harness.routeNativeElement as HTMLElement;
+    expect(page.textContent).toContain("Could not load article text");
+    expect(page.textContent).toContain("Invented example");
+    expect(page.querySelector(".original-link")?.getAttribute("href")).toBe(
+      article.item.original_url,
+    );
+    expect(page.querySelector(".body-text")).toBeNull();
+
+    page.querySelector("button")?.click();
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+    expect(page.textContent).toContain("Invented content only.");
+  });
+
+  it("cancels an outstanding article request when the route ID changes", async () => {
+    const pending = new Subject<NewsArticle>();
+    const second: NewsArticle = {
+      ...article,
+      item: { ...article.item, id: "demo-two", title: "Second article" },
+    };
+    const loadArticle = vi
+      .fn()
+      .mockReturnValueOnce(pending)
+      .mockReturnValueOnce(of(second));
+    const harness = await setup(loadArticle);
+    await harness.navigateByUrl("/news/demo-one", NewsDetailPage);
+    expect(harness.routeNativeElement?.textContent).toContain("Loading article");
+    await harness.navigateByUrl("/news/demo-two", NewsDetailPage);
+    pending.next(article);
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain("Second article");
+    expect(harness.routeNativeElement?.textContent).not.toContain(
+      "Invented example",
+    );
+    expect(loadArticle).toHaveBeenNthCalledWith(1, "demo-one");
+    expect(loadArticle).toHaveBeenNthCalledWith(2, "demo-two");
   });
 
   it("distinguishes missing items from network errors and retries failures", async () => {

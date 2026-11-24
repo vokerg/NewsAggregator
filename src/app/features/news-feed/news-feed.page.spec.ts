@@ -65,7 +65,7 @@ describe("NewsFeedPage", () => {
     expect(fixture.nativeElement.textContent).toContain(
       "Demonstration data only",
     );
-    expect(fixture.nativeElement.textContent).toContain("1 articles");
+    expect(fixture.nativeElement.textContent).toContain("1 article");
     expect(
       (fixture.nativeElement as HTMLElement).querySelector(
         'a[href="/news/demo-one"]',

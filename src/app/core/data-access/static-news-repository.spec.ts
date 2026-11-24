@@ -94,6 +94,30 @@ describe("StaticNewsRepository", () => {
     expect(text).toBe("Original synthetic content");
   });
 
+  it("keeps the original URL when the body request fails", () => {
+    const { repository, http } = setup();
+    let result: unknown;
+    repository.loadArticle("demo-one").subscribe((value) => (result = value));
+    http
+      .expectOne("https://example.org/NewsAggregator/catalog/manifest.json")
+      .flush({
+        schema_version: 1,
+        revision: "fixture",
+        items: [item],
+      });
+    http
+      .expectOne(
+        "https://example.org/NewsAggregator/catalog/items/demo-one.json",
+      )
+      .flush(null, { status: 404, statusText: "Not Found" });
+    http.verify();
+    expect(result).toEqual({
+      item,
+      revision: "fixture",
+      body: { kind: "load_error" },
+    });
+  });
+
   it("returns null for an unknown item without requesting a detail asset", () => {
     const { repository, http } = setup();
     let result: unknown;
@@ -111,12 +135,10 @@ describe("StaticNewsRepository", () => {
     expect(result).toBeNull();
   });
 
-  it("rejects an available public body if metadata says extraction failed", () => {
+  it("rejects conflicting body text but retains validated metadata", () => {
     const { repository, http } = setup();
-    let failed = false;
-    repository.loadArticle("demo-one").subscribe({
-      error: () => (failed = true),
-    });
+    let result: unknown;
+    repository.loadArticle("demo-one").subscribe((value) => (result = value));
     http
       .expectOne("https://example.org/NewsAggregator/catalog/manifest.json")
       .flush({
@@ -138,6 +160,10 @@ describe("StaticNewsRepository", () => {
         },
       });
     http.verify();
-    expect(failed).toBe(true);
+    expect(result).toEqual({
+      item: { ...item, extraction_status: "failed" },
+      revision: "fixture",
+      body: { kind: "load_error" },
+    });
   });
 });

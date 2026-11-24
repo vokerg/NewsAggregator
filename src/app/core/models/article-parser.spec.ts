@@ -81,6 +81,18 @@ describe("parseArticleDocument", () => {
         publication_basis: "synthetic",
         paragraphs: Array(61).fill("text"),
       },
+      {
+        kind: "available",
+        publication_basis: ["synthetic"],
+        paragraphs: ["Invalid enum"],
+      },
+      {
+        kind: "available",
+        publication_basis: "synthetic",
+        paragraphs: Array(16).fill("x".repeat(4000)),
+      },
+      { kind: "unavailable", reason: ["rights"] },
+      { kind: "load_error" },
       { kind: "unavailable", reason: "unreviewed" },
       {
         kind: "unavailable",

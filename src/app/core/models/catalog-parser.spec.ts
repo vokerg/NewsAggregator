@@ -51,6 +51,22 @@ describe("parseCatalog", () => {
     ).toThrow();
   });
 
+  it("rejects coercible enum values, whitespace IDs and repeated tags", () => {
+    for (const fields of [
+      { extraction_status: ["extracted"] },
+      { id: "demo-one\n" },
+      { tags: ["world", "world"] },
+    ]) {
+      expect(() =>
+        parseCatalog({
+          schema_version: 1,
+          revision: "fixture",
+          items: [{ ...article, ...fields }],
+        }),
+      ).toThrow();
+    }
+  });
+
   it("rejects unsupported versions and malformed data", () => {
     expect(() =>
       parseCatalog({ schema_version: 2, revision: "v2", items: [] }),
