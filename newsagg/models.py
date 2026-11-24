@@ -177,9 +177,9 @@ class Source:
         for url in (home, index):
             if not any(urlsplit(url).hostname == host or urlsplit(url).hostname.endswith("." + host) for host in hosts):
                 raise ValidationError("configured URL host not allowlisted")
-        for name, low, high in (("cadence_minutes", 5, 10080), ("max_pages", 1, 10), ("max_items", 1, 100)):
-            if type(data[name]) is not int or not low <= data[name] <= high:
-                raise ValidationError(f"{name} outside supported bounds")
+        for field, low, high in (("cadence_minutes", 5, 10080), ("max_pages", 1, 10), ("max_items", 1, 100)):
+            if type(data[field]) is not int or not low <= data[field] <= high:
+                raise ValidationError(f"{field} outside supported bounds")
         tag = data["item_tag"]
         if not isinstance(tag, str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,24}", tag):
             raise ValidationError("invalid item_tag")

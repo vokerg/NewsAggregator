@@ -1,6 +1,6 @@
 # NewsAggregator — agent operating contract
 
-This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. **A fixture-tested, opt-in Python source-collection foundation (#8), Angular shell (#1), and synthetic-fixture reader (#2) exist, but no real sources are enabled or live-tested; no production collector schedule, LLM service, deployed website, production dataset, or automated source has been implemented.** Do not claim otherwise.
+This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. The opt-in Python collector (#8) supports DR Nyheder, TV 2 Nyheder, both NewsMaker editions and Russian-language Meduza (#9–#12). The Angular shell (#1) and reader (#2) use synthetic fixtures. Production scheduling, dataset publication, website deployment and the LLM service are pending.
 
 ## Mandatory context
 

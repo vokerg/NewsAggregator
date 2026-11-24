@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone, timedelta
 import json
 from pathlib import Path
@@ -32,8 +32,22 @@ def fixtures():
 
 
 class RegistryTests(unittest.TestCase):
-    def test_empty_real_registry_has_no_enabled_sources(self):
-        self.assertEqual(load_registry(Path("config/sources.json"))[1], [])
+    def test_real_registry_preserves_publisher_country_language_and_perspective(self):
+        registry = load_registry(Path("config/sources.json"))[1]
+        by_id = {source.source_id: source for source in registry}
+        expected = {
+            "dr-nyheder": ("DR Nyheder", "DK", ("da",), ("dk-media",)),
+            "tv2-nyheder": ("TV 2 Nyheder", "DK", ("da",), ("dk-media",)),
+            "newsmaker-ru": ("NewsMaker (Russian)", "MD", ("ru",), ("md-media",)),
+            "newsmaker-ro": ("NewsMaker (Romanian)", "MD", ("ro",), ("md-media",)),
+            "meduza-ru": ("Meduza (Russian)", "LV", ("ru",), ("ru-independent-media",)),
+        }
+        for source_id, metadata in expected.items():
+            with self.subTest(source=source_id):
+                source = by_id[source_id]
+                self.assertTrue(source.enabled)
+                self.assertEqual((source.display_name, source.publisher_country, source.languages,
+                                  source.perspective_ids), metadata)
 
     def test_registry_rejects_unknown_timezone(self):
         payload = json.loads((FIX / "registry.json").read_text())
@@ -146,6 +160,61 @@ class AdapterTests(unittest.TestCase):
                 '<p>Visible</p></article> Outside')
         body, _ = extract_body(html)
         self.assertEqual(body, "Visible")
+
+    def test_dr_body_reads_only_the_primary_article(self):
+        dr = replace(sources()[0], source_id="dr-nyheder")
+        html = ('<article itemscope itemtype="https://schema.org/NewsArticle">'
+                '<meta itemprop="datePublished" content="2026-11-24T12:00:00+01:00">'
+                '<h1>Headline</h1><div itemprop="articleBody">'
+                '<p>Text with a <a href="/nyheder/example">link</a>, and more.</p>'
+                '<p>Second paragraph.</p></div><p>Related links</p></article>'
+                '<article><div itemprop="articleBody">Unrelated story.</div></article>')
+        self.assertEqual(extract_body(html, source=dr),
+                         ("Text with a link, and more. Second paragraph.", "2026-11-24T11:00:00Z"))
+
+    def test_dr_index_and_headline_only_are_not_article_bodies(self):
+        dr = replace(sources()[0], source_id="dr-nyheder")
+        html = ('<article itemscope itemtype="https://schema.org/NewsArticle">'
+                '<h1>Headline only</h1></article>'
+                '<article><div itemprop="articleBody">Unrelated story.</div></article>')
+        self.assertEqual(extract_body(html, source=dr), (None, None))
+
+    def test_tv2_body_reads_editorial_text_across_multiple_blocks(self):
+        tv2 = replace(sources()[0], source_id="tv2-nyheder")
+        html = ('<article class="tc_deck tc_article__wrapper">'
+                '<header class="tc_page__header"><div class="tc_richcontent">Standfirst.</div></header>'
+                '<div class="tc_page__body"><div class="tc_richcontent"><p>First paragraph.</p></div>'
+                '<div class="tc_embed"><div class="tc_richcontent">Embedded text.</div></div>'
+                '<div class="tc_richcontent"><h2>Subheading</h2><p>Second paragraph.</p></div></div>'
+                '<div class="tc_page__footer"><div class="tc_richcontent">Related link.</div></div>'
+                '</article><article class="tc_teaser">Another article.</article>')
+        self.assertEqual(extract_body(html, source=tv2),
+                         ("First paragraph. Subheading Second paragraph.", None))
+
+    def test_newsmaker_body_excludes_infinite_scroll_articles(self):
+        html = ('<meta property="article:published_time" content="2026-11-24T18:00:00Z">'
+                '<div class="js-current-article"><h1>Headline</h1>'
+                '<div class="elementor-widget-theme-post-content"><p>First story.</p></div></div>'
+                '<div class="js-infinite-scroll-article js-current-article">'
+                '<div class="elementor-widget-theme-post-content"><p>Another story.</p></div></div>')
+        for source_id in ("newsmaker-ru", "newsmaker-ro"):
+            with self.subTest(source=source_id):
+                source = replace(sources()[0], source_id=source_id)
+                self.assertEqual(extract_body(html, source=source), ("First story.", "2026-11-24T18:00:00Z"))
+                related_only = html[html.index('<div class="js-infinite-scroll-article'):]
+                self.assertEqual(extract_body(related_only, source=source), (None, None))
+                video = html.replace('class="js-current-article"', 'class="big-article"')
+                self.assertEqual(extract_body(video, source=source), ("First story.", "2026-11-24T18:00:00Z"))
+
+    def test_meduza_body_excludes_recommendations_embeds_and_share_tools(self):
+        source = replace(sources()[0], source_id="meduza-ru")
+        html = ('<div class="GeneralMaterial-module-article"><p>First paragraph.</p>'
+                '<div class="RelatedList-module-root"><article>Recommended story.</article></div>'
+                '<figure class="EmbedBlock-module_root__fixture">Embedded post.</figure>'
+                '<p>Second paragraph.</p>'
+                '<div class="Toolbar-module_root__fixture">Share.</div></div>')
+        self.assertEqual(extract_body(html, source=source), ("First paragraph. Second paragraph.", None))
+        self.assertEqual(extract_body('<article>Recommended story.</article>', source=source), (None, None))
 
     def test_invalid_article_link_is_skipped(self):
         result, _ = parse_index('<article><a href="https://evil.org/secret">Story</a></article>', "https://news.example.org/news", sources()[1])
