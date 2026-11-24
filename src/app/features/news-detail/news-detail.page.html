@@ -1,0 +1,103 @@
+<section aria-labelledby="article-title">
+  <a class="back-link" routerLink="/news">← Back to news</a>
+
+  @if (state(); as detail) { @switch (detail.kind) { @case ('loading') {
+  <h1 id="article-title">Article</h1>
+  <p role="status">Loading article…</p>
+  } @case ('missing') {
+  <div class="status-panel" role="status">
+    <h1 id="article-title">Article not found</h1>
+    <p>This article ID is not in the current public catalog.</p>
+  </div>
+  } @case ('error') {
+  <div class="status-panel" role="alert">
+    <h1 id="article-title">Article unavailable</h1>
+    <p>Could not load the article. Check your connection and retry.</p>
+    <button type="button" (click)="reload()">Retry loading</button>
+  </div>
+  } @case ('ready') {
+  <article class="reader">
+    @if (detail.article.revision.startsWith('fixture-')) {
+    <p class="demo-notice" role="note">
+      Demonstration data only: this article is invented, not collected news.
+    </p>
+    }
+    <p class="source">{{ detail.article.item.source_name }}</p>
+    <h1 id="article-title">{{ detail.article.item.title }}</h1>
+    <p class="attribution">
+      <strong>View from:</strong>
+      {{ detail.article.item.perspective_ids.join(', ') || 'Unknown' }}
+    </p>
+    <p class="attribution">
+      <strong>About:</strong>
+      {{ detail.article.item.about_country_codes.join(', ') || 'Unknown' }}
+    </p>
+    @if (detail.article.item.tags; as tags) { @if (tags.length) {
+    <p class="attribution"><strong>Tags:</strong> {{ tags.join(', ') }}</p>
+    } }
+    <dl class="metadata">
+      <div>
+        <dt>Published</dt>
+        <dd>
+          @if (detail.article.item.published_at; as published) {
+          <time [attr.datetime]="published">
+            {{ published | date: 'medium':'UTC' }} UTC
+          </time>
+          } @else { Unknown }
+        </dd>
+      </div>
+      <div>
+        <dt>First seen</dt>
+        <dd>
+          <time [attr.datetime]="detail.article.item.first_seen_at">
+            {{ detail.article.item.first_seen_at | date: 'medium':'UTC' }} UTC
+          </time>
+        </dd>
+      </div>
+      <div>
+        <dt>Source ID</dt>
+        <dd>{{ detail.article.item.source_id }}</dd>
+      </div>
+      <div>
+        <dt>Extraction</dt>
+        <dd>{{ detail.article.item.extraction_status }}</dd>
+      </div>
+    </dl>
+    <p>
+      <a
+        class="original-link"
+        [href]="detail.article.item.original_url"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Open original publisher article <span aria-hidden="true">↗</span>
+      </a>
+    </p>
+    @if (detail.article.body.kind === 'available') {
+    <div class="body-text" aria-label="Available original article text">
+      @for (paragraph of detail.article.body.paragraphs; track $index) {
+      <p>{{ paragraph }}</p>
+      }
+    </div>
+    <p class="rights-note">
+      Public text basis: {{ detail.article.body.publication_basis }}. This text
+      is not an AI-generated summary.
+    </p>
+    } @else if (detail.article.body.kind === 'load_error') {
+    <div class="status-panel" role="alert">
+      <h2>Could not load article text</h2>
+      <p>The original publisher link is still available.</p>
+      <button type="button" (click)="reload()">Retry loading</button>
+    </div>
+    } @else {
+    <div class="status-panel" role="status">
+      <h2>Article text not publicly available</h2>
+      <p>
+        Reason: {{ detail.article.body.reason }}. Read the original article at
+        the publisher instead.
+      </p>
+    </div>
+    }
+  </article>
+  } } }
+</section>

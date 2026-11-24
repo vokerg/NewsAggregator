@@ -53,7 +53,7 @@ h1 {
 
 .card-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   margin: 0;
   padding: 0;
@@ -74,4 +74,12 @@ h1 {
   .card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+}
+
+.demo-notice {
+  max-width: 45rem;
+  padding: 0.8rem 1rem;
+  border-left: 4px solid var(--color-link);
+  background: var(--color-surface);
+  font-weight: 700;
 }

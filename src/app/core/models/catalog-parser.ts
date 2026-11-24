@@ -46,7 +46,8 @@ function isStringList(value: unknown): value is string[] {
   return (
     Array.isArray(value) &&
     value.length <= 50 &&
-    value.every((part) => isPublicText(part, 128))
+    value.every((part) => isPublicText(part, 128)) &&
+    new Set(value).size === value.length
   );
 }
 
@@ -121,10 +122,16 @@ function isSafePublisherUrl(value: unknown): value is string {
 }
 
 function isNewsItem(value: unknown): value is NewsItem {
-  if (!isRecord(value) || !hasExactKeys(value, ITEM_KEYS)) return false;
+  if (
+    !isRecord(value) ||
+    (!hasExactKeys(value, ITEM_KEYS) &&
+      !hasExactKeys(value, [...ITEM_KEYS, "tags"]))
+  )
+    return false;
 
   return (
     isPublicText(value["id"], 128) &&
+    /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value["id"]) &&
     isPublicText(value["title"], 500) &&
     isPublicText(value["source_id"], 128) &&
     isPublicText(value["source_name"], 120) &&
@@ -134,8 +141,10 @@ function isNewsItem(value: unknown): value is NewsItem {
     isZonedTimestamp(value["first_seen_at"]) &&
     isStringList(value["perspective_ids"]) &&
     isStringList(value["about_country_codes"]) &&
+    (value["tags"] === undefined || isStringList(value["tags"])) &&
+    typeof value["extraction_status"] === "string" &&
     ["extracted", "unavailable", "failed", "not_requested"].includes(
-      String(value["extraction_status"]),
+      value["extraction_status"],
     )
   );
 }

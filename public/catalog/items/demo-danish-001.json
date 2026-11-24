@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "item_id": "demo-danish-001",
+  "body": {
+    "kind": "available",
+    "publication_basis": "synthetic",
+    "paragraphs": [
+      "This is an invented example article for exercising the reader. It describes no real event, newsroom, or collection run.",
+      "Its publisher perspective is Danish media, while the example subject geography is Ukraine. These attributes intentionally differ."
+    ]
+  }
+}

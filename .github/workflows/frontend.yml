@@ -36,3 +36,7 @@ jobs:
           grep -q '<base href="/NewsAggregator/">' dist/news-aggregator/browser/index.html
           test -f dist/news-aggregator/browser/catalog/manifest.json
           python -m json.tool dist/news-aggregator/browser/catalog/manifest.json >/dev/null
+          for detail in public/catalog/items/*.json; do
+            cmp "$detail" "dist/news-aggregator/browser/${detail#public/}"
+            python -m json.tool "$detail" >/dev/null
+          done

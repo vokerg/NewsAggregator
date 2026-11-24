@@ -10,5 +10,13 @@ export const routes: Routes = [
         (module) => module.NewsFeedPage,
       ),
   },
+  {
+    path: "news/:id",
+    title: "Article | NewsAggregator",
+    loadComponent: () =>
+      import("./features/news-detail/news-detail.page").then(
+        (module) => module.NewsDetailPage,
+      ),
+  },
   { path: "**", redirectTo: "news" },
 ];

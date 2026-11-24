@@ -32,12 +32,36 @@ h2 {
   font-size: 0.85rem;
 }
 
-a {
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.2rem;
+  margin-top: auto;
+}
+
+.card-actions a {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
-  margin-top: auto;
   font-weight: 700;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
+  gap: 0.35rem;
+  padding: 0;
+  list-style: none;
+}
+
+.tags li {
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.85rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .attribution {

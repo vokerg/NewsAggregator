@@ -1,7 +1,4 @@
-/**
- * Public metadata only. The publisher's full article text is not an
- * automatically reusable public asset.
- */
+/** Public metadata. An extracted body does not imply rights to publish it. */
 export interface NewsItem {
   readonly id: string;
   readonly title: string;
@@ -13,6 +10,7 @@ export interface NewsItem {
   /** A publisher's perspective is not the geography of the event. */
   readonly perspective_ids: readonly string[];
   readonly about_country_codes: readonly string[];
+  readonly tags?: readonly string[];
   readonly extraction_status:
     | "extracted"
     | "unavailable"
@@ -24,4 +22,32 @@ export interface NewsCatalog {
   readonly schema_version: 1;
   readonly revision: string;
   readonly items: readonly NewsItem[];
+}
+
+/**
+ * Public article text requires an explicit publication basis. This marker is
+ * producer-supplied and cannot itself establish ownership or a license.
+ */
+export type PublicArticleBody =
+  | {
+      readonly kind: "available";
+      readonly publication_basis: "synthetic" | "licensed" | "public_domain";
+      readonly paragraphs: readonly string[];
+    }
+  | {
+      readonly kind: "unavailable";
+      readonly reason: "rights" | "not_extracted" | "failed" | "unknown";
+    };
+
+export interface NewsArticleDocument {
+  readonly schema_version: 1;
+  readonly item_id: string;
+  readonly body: PublicArticleBody;
+}
+
+export interface NewsArticle {
+  readonly item: NewsItem;
+  readonly revision: string;
+  /** Local retrieval failure, never an accepted public document kind. */
+  readonly body: PublicArticleBody | { readonly kind: "load_error" };
 }
