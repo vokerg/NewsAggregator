@@ -29,7 +29,9 @@
     </p>
   </div>
   } @else {
-  <p class="result-count">{{ count() }} {{ count() === 1 ? 'article' : 'articles' }}</p>
+  <p class="result-count">
+    {{ count() }} {{ count() === 1 ? 'article' : 'articles' }}
+  </p>
   <ul class="card-grid" aria-label="News articles">
     @for (item of feed.items; track item.id) {
     <li><app-news-card [item]="item" /></li>

@@ -121,7 +121,9 @@ describe("NewsDetailPage", () => {
       .mockReturnValueOnce(of(second));
     const harness = await setup(loadArticle);
     await harness.navigateByUrl("/news/demo-one", NewsDetailPage);
-    expect(harness.routeNativeElement?.textContent).toContain("Loading article");
+    expect(harness.routeNativeElement?.textContent).toContain(
+      "Loading article",
+    );
     await harness.navigateByUrl("/news/demo-two", NewsDetailPage);
     pending.next(article);
     harness.detectChanges();
