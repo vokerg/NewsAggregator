@@ -160,9 +160,8 @@ export function filterNews(
       );
     }
     return (
-      (filters.sort === "oldest"
-        ? first - second
-        : second - first) || a.id.localeCompare(b.id)
+      (filters.sort === "oldest" ? first - second : second - first) ||
+      a.id.localeCompare(b.id)
     );
   });
 }
