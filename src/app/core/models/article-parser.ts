@@ -50,8 +50,9 @@ export function parseArticleDocument(
     const paragraphs = body["paragraphs"];
     if (
       !hasExactKeys(body, ["kind", "publication_basis", "paragraphs"]) ||
+      typeof body["publication_basis"] !== "string" ||
       !["synthetic", "licensed", "public_domain"].includes(
-        String(body["publication_basis"]),
+        body["publication_basis"],
       ) ||
       !Array.isArray(paragraphs) ||
       paragraphs.length === 0 ||
@@ -67,9 +68,8 @@ export function parseArticleDocument(
   } else if (
     body["kind"] !== "unavailable" ||
     !hasExactKeys(body, ["kind", "reason"]) ||
-    !["rights", "not_extracted", "failed", "unknown"].includes(
-      String(body["reason"]),
-    )
+    typeof body["reason"] !== "string" ||
+    !["rights", "not_extracted", "failed", "unknown"].includes(body["reason"])
   ) {
     throw new Error("Invalid public article availability");
   }

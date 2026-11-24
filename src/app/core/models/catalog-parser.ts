@@ -46,7 +46,8 @@ function isStringList(value: unknown): value is string[] {
   return (
     Array.isArray(value) &&
     value.length <= 50 &&
-    value.every((part) => isPublicText(part, 128))
+    value.every((part) => isPublicText(part, 128)) &&
+    new Set(value).size === value.length
   );
 }
 
@@ -129,7 +130,7 @@ function isNewsItem(value: unknown): value is NewsItem {
     return false;
 
   return (
-    typeof value["id"] === "string" &&
+    isPublicText(value["id"], 128) &&
     /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value["id"]) &&
     isPublicText(value["title"], 500) &&
     isPublicText(value["source_id"], 128) &&
@@ -141,8 +142,9 @@ function isNewsItem(value: unknown): value is NewsItem {
     isStringList(value["perspective_ids"]) &&
     isStringList(value["about_country_codes"]) &&
     (value["tags"] === undefined || isStringList(value["tags"])) &&
+    typeof value["extraction_status"] === "string" &&
     ["extracted", "unavailable", "failed", "not_requested"].includes(
-      String(value["extraction_status"]),
+      value["extraction_status"],
     )
   );
 }

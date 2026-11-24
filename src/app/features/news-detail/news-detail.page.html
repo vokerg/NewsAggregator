@@ -2,6 +2,7 @@
   <a class="back-link" routerLink="/news">← Back to news</a>
 
   @if (state(); as detail) { @switch (detail.kind) { @case ('loading') {
+  <h1 id="article-title">Article</h1>
   <p role="status">Loading article…</p>
   } @case ('missing') {
   <div class="status-panel" role="status">
@@ -82,6 +83,12 @@
       Public text basis: {{ detail.article.body.publication_basis }}. This text
       is not an AI-generated summary.
     </p>
+    } @else if (detail.article.body.kind === 'load_error') {
+    <div class="status-panel" role="alert">
+      <h2>Could not load article text</h2>
+      <p>The original publisher link is still available.</p>
+      <button type="button" (click)="reload()">Retry loading</button>
+    </div>
     } @else {
     <div class="status-panel" role="status">
       <h2>Article text not publicly available</h2>

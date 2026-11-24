@@ -5,7 +5,7 @@ import { NewsArticle, NewsCatalog } from "../models/news";
 /** Read-only port; neither UI components nor browser data-access can commit to GitHub. */
 export interface NewsReadRepository {
   loadCatalog(): Observable<NewsCatalog>;
-  /** null indicates an unknown item ID; other load failures remain errors. */
+  /** null means unknown ID; catalog errors fail, body errors retain metadata. */
   loadArticle(id: string): Observable<NewsArticle | null>;
 }
 

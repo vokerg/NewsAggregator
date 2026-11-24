@@ -125,3 +125,7 @@ The temporary v1 manifest supports optional `tags` for backwards-compatible sche
 An explicit `publication_basis` marker controls the form of publicly presented text but **does not establish legal rights**. The producer (future #4) must enforce rights and validate any actual publishing. The reader renders plaintext through Angular interpolation, never as trusted HTML. Real capture remains separately rights-controlled.
 
 **Evidence/limits:** targeted Angular parser, repository, card/feed and detail/route tests are included; GitHub Actions owns pinned-Node compile, lint, format, unit tests and Pages-subpath build. No live publisher smoke, actual browser viewport/device testing, service worker, automated dataset publication, or deployed Pages check is claimed from this change.
+
+### 2026-11-24 pre-merge review for #2
+
+Strict string enum checks reject coercible JSON arrays; catalog identifiers reject surrounding whitespace and repeated tags are rejected to avoid duplicate Angular tracking keys. Article document errors now preserve validated metadata and the original link, with a distinct retryable text-load error (never accepted as a stored document state). Long tags wrap inside the narrow feed grid. Regression tests exercise these boundaries and navigation cancellation; the fixture asset check covers the actual detail files. These checks do not establish publishing rights or production deployment.

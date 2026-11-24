@@ -1,7 +1,7 @@
 import { DOCUMENT } from "@angular/common";
 import { HttpClient } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
-import { map, Observable, of, switchMap } from "rxjs";
+import { catchError, map, Observable, of, switchMap } from "rxjs";
 import { parseArticleDocument } from "../models/article-parser";
 import { parseCatalog } from "../models/catalog-parser";
 import { NewsArticle, NewsCatalog } from "../models/news";
@@ -43,6 +43,13 @@ export class StaticNewsRepository implements NewsReadRepository {
             }
             return { item, revision: catalog.revision, body: document.body };
           }),
+          catchError(() =>
+            of<NewsArticle>({
+              item,
+              revision: catalog.revision,
+              body: { kind: "load_error" },
+            }),
+          ),
         );
       }),
     );

@@ -48,5 +48,6 @@ export interface NewsArticleDocument {
 export interface NewsArticle {
   readonly item: NewsItem;
   readonly revision: string;
-  readonly body: PublicArticleBody;
+  /** Local retrieval failure, never an accepted public document kind. */
+  readonly body: PublicArticleBody | { readonly kind: "load_error" };
 }

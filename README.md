@@ -46,7 +46,7 @@ NewsAggregator — персональный агрегатор мировых н
 
 ## Следующий шаг
 
-Angular scaffold, маршрутизация, тесты и сборка реализованы в #1. PWA и GitHub Pages **не развёрнуты и не проверены**. Следующий UI-этап — reader и фильтры в отдельных issues; не считать пустую фикстуру реальной новостной лентой.
+Angular scaffold, маршрутизация, тесты и сборка реализованы в #1. PWA и GitHub Pages **не развёрнуты и не проверены**. Reader реализован на синтетических примерах в #2; следующий UI-этап — фильтры (#3). Не считать фикстуру реальной новостной лентой.
 
 Подтвердить первый источник и его URL, проверить на одном RSS- и одном web-источнике список заголовков, извлечение body, метки времени и повторяемость сохранения. Затем протестировать два этапа LLM на малом наборе с учётом цены и точности. Никаких утверждений о работающем сборе до фактического прогона.
 
@@ -80,7 +80,7 @@ npm start
 
 The local development URL is `http://localhost:4200/#/news`. The production build sets `<base href="/NewsAggregator/">` and uses hash routes (`/NewsAggregator/#/news`) to avoid GitHub Pages history-mode deep-link 404s. The `build:pages` command checks *compile-time path configuration only*; neither publishing nor live Pages checks are enabled. There is no service worker, installable PWA, backend read API, real catalog, or ingestion scheduler. Unit tests use the Angular Vitest builder and mocked HTTP; GitHub Actions provides the compatible Node runtime for CI. The v1 catalog is a bounded metadata projection, not the collector's raw NDJSON schema; issue #4 must define and validate the producer-to-reader transformation. The renderer rejects unrecognized fields, invalid dates and unsafe publisher URLs.
 
-Issue #2 implements fixture-driven article details. Future work: #4 implements partitioned read-model publishing and #5 addresses PWA installation and freshness. Do not treat the temporary empty manifest as a production pagination format.
+Issue #2 implements fixture-driven article details. Future work: #4 implements partitioned read-model publishing and #5 addresses PWA installation and freshness. Do not treat the temporary fixture manifest as a production pagination format.
 
 ## Synthetic news reader — issue #2 (2026-11-22)
 
@@ -91,6 +91,6 @@ The temporary v1 catalog remains bounded to 500 metadata records; optional `tags
 - `body: { "kind": "available", "publication_basis": "synthetic|licensed|public_domain", "paragraphs": ["plain text"] }` for rights-reviewed text; or
 - `body: { "kind": "unavailable", "reason": "rights|not_extracted|failed|unknown" }` when text cannot be shown.
 
-These are **data assertions supplied by the producer**, not proof of a license. The publisher/producer must verify rights before a public file is generated; the browser rejects unsupported shapes, unexpected fields, unsafe URLs, oversized content and ID mismatches. No HTML is rendered from source data. `extraction_status: extracted` does not imply that the article body is publicly accessible. The original HTTPS URL remains available from both feed and detail.
+These are **data assertions supplied by the producer**, not proof of a license. The publisher/producer must verify rights before a public file is generated; the browser rejects unsupported shapes, unexpected fields, unsafe URLs, oversized content and ID mismatches. No HTML is rendered from source data. `extraction_status: extracted` does not imply that the article body is publicly accessible. The original HTTPS URL remains available from both feed and detail, including when the separate body document is missing, invalid or fails to load.
 
 Run `npm ci && npm run format:check && npm run lint && npm run test:ci && npm run build:pages` under the supported Node version in `.nvmrc`. CI tests the reader using synthetic HTTP fixtures and confirms JSON assets are copied by the build. This is **not** evidence of deployed Pages, device tests, or live publisher access. Partitioning, producer-side rights enforcement, and real data remain #4 and source onboarding.
