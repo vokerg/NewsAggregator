@@ -198,7 +198,7 @@ def run(registry: list[Source], fetcher, output: Path, *, now: datetime, force: 
                     if source.extract_body:
                         try:
                             _, body = fetcher.get(candidate.original_url, source)
-                            body_text, extracted_published = extract_body(body)
+                            body_text, extracted_published = extract_body(body, source=source)
                             # Metadata extracted from the page is valid even when
                             # no readable article body was found.
                             published = published or extracted_published

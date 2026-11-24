@@ -1,6 +1,6 @@
 # NewsAggregator
 
-**Статус: fixture-tested collector foundation (#8), Angular shell (#1) и synthetic-fixture News Reader (#2).** Это публичный репозиторий. Python CLI и offline-тесты коллектора существуют; Angular web-app scaffold добавлен, но реальные источники, production hosting/PWA, планировщик и LLM-пайплайн **ещё не реализованы**.
+**Статус:** Python CLI поддерживает ручной сбор DR Nyheder, TV 2 Nyheder, русской и румынской редакций NewsMaker и русской редакции Meduza (#9–#12). Angular shell (#1) и News Reader (#2) используют синтетические данные. Публикация данных, production hosting/PWA, планировщик и LLM-пайплайн остаются в работе.
 
 NewsAggregator — персональный агрегатор мировых новостей с возможностью смотреть не только **что произошло**, но и **что разные медиасреды считают важным**. Пользователь самостоятельно формирует реестр источников, включая официальные, независимые, ангажированные и пропагандистские медиа. Система должна показывать их повестку с атрибуцией, а не незаметно нормализовать её под единый «объективный» обзор.
 
@@ -52,13 +52,13 @@ Angular scaffold, маршрутизация, тесты и сборка реа�
 
 ## Collector foundation (issue #8)
 
-Сбор RSS/Atom и HTML-index реализован как **библиотека + CLI**, а не как работающий автоматически сервис. В `config/sources.json` пока **нет включённых реальных источников**. Используйте синтетические offline-фикстуры; полный контракт и предостережения — в [docs/COLLECTION.md](docs/COLLECTION.md).
+Коллектор поддерживает RSS/Atom и HTML-индексы. Активные ленты перечислены в `config/sources.json`, сбор запускается вручную. Команды и описание охвата приведены в [docs/COLLECTION.md](docs/COLLECTION.md).
 
 ```bash
 python -m unittest discover -s tests -v
 python -m newsagg --registry tests/fixtures/registry.json \
   --fixture-map tests/fixtures/fixtures-map.json \
-  --output .local/newsagg --at 2026-11-18T08:00:00Z
+  --output .local/newsagg-fixtures --at 2026-11-18T08:00:00Z
 ```
 
 Live network требует явного `--live` и подтверждённого/включённого источника с проверенными robots/terms. Публичное хранилище содержит **только metadata**; сырой HTML и полный текст не публикуются. CI проверяет только фикстуры, не реальные publisher endpoints.
@@ -84,7 +84,7 @@ Issue #2 implements fixture-driven article details. Future work: #4 implements p
 
 ## Synthetic news reader — issue #2 (2026-11-22)
 
-The read-only Angular app now demonstrates feed cards and routes such as `/#/news/demo-danish-001`, with a separate validated public detail document for each item. `public/catalog/manifest.json` intentionally contains **two invented example records**, one with original *project-authored* text and one with explicitly rights-unavailable text. Every page containing those records is labelled as a demonstration. The `example.org` publisher links are placeholders, **not** live articles. No real source has been enabled, collected or published.
+The read-only Angular app now demonstrates feed cards and routes such as `/#/news/demo-danish-001`, with a separate validated public detail document for each item. `public/catalog/manifest.json` intentionally contains **two invented example records**, one with original *project-authored* text and one with explicitly rights-unavailable text. Every page containing those records is labelled as a demonstration. The `example.org` publisher links are placeholders. Data collected by the CLI has yet to be integrated into the Angular catalog.
 
 The temporary v1 catalog remains bounded to 500 metadata records; optional `tags` maintain backward compatibility with previous v1 catalogs. Item IDs must be path-safe ASCII identifiers (letter/digit first, then letters/digits/hyphens/underscores). Each item references a `catalog/items/<id>.json` document that must match its ID. A detail document contains either:
 

@@ -195,36 +195,102 @@ class BodyParser(HTMLParser):
     """
 
     _IGNORED = {"script", "style", "nav", "footer", "form", "noscript", "template", "svg"}
+    _BLOCKS = {"p", "br", "div", "li", "blockquote", "h2", "h3", "h4"}
 
-    def __init__(self):
+    def __init__(self, *, primary_tag: str = "article", primary: tuple[str, ...] | None = None,
+                 body: tuple[str, str] | None = None, excluded_classes: frozenset[str] = frozenset(),
+                 excluded_class_prefixes: tuple[str, ...] = ()):
         super().__init__(convert_charrefs=True)
         self.tags: list[str] = []
         self.parts: list[str] = []
         self.published: str | None = None
+        self.primary_tag = primary_tag
+        self.primary = primary
+        self.body = body
+        self.excluded_classes = excluded_classes
+        self.excluded_class_prefixes = excluded_class_prefixes
+        self.primary_seen = False
+        self.body_depth: int | None = None
+        self.excluded_depth: int | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         a = dict(attrs)
         if tag == "meta" and (a.get("property") == "article:published_time" or a.get("name") == "datePublished"):
             self.published = self.published or _date(a.get("content"))
-        if tag != "article" and not self.tags:
-            return
+        if not self.tags:
+            if tag != self.primary_tag:
+                return
+            if self.primary:
+                attribute, *markers = self.primary
+                if (self.primary_seen or not set(markers).intersection((a.get(attribute) or "").split())
+                        or self.excluded_classes.intersection((a.get("class") or "").split())):
+                    return
+                self.primary_seen = True
         if tag not in VOID_TAGS:
             self.tags.append(tag)
-        if tag == "time" and a.get("datetime"):
+        if self.body:
+            attribute, marker = self.body
+            if tag not in VOID_TAGS:
+                classes = (a.get("class") or "").split()
+                if self.excluded_depth is None and (
+                    self.excluded_classes.intersection(classes)
+                    or any(name.startswith(self.excluded_class_prefixes) for name in classes)
+                ):
+                    self.excluded_depth = len(self.tags)
+                if self.body_depth is None and marker in (a.get(attribute) or "").split():
+                    self.body_depth = len(self.tags)
+            properties = (a.get("itemprop") or "").split()
+            if self.body_depth is not None and tag in self._BLOCKS:
+                self.handle_data(" ")
+            if "datePublished" in properties:
+                self.published = self.published or _date(a.get("content") or a.get("datetime"))
+        elif tag == "time" and a.get("datetime"):
             self.published = self.published or _date(a["datetime"])
 
     def handle_data(self, data: str) -> None:
-        if self.tags and not self._IGNORED.intersection(self.tags):
+        if (self.tags and (not self.body or self.body_depth is not None) and self.excluded_depth is None
+                and not self._IGNORED.intersection(self.tags)):
             self.parts.append(data)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in self.tags:
             # Ignore stray/mismatched closing tags rather than corrupting depth.
             del self.tags[len(self.tags) - 1 - self.tags[::-1].index(tag):]
+            if self.body_depth is not None and len(self.tags) < self.body_depth:
+                self.body_depth = None
+            if self.excluded_depth is not None and len(self.tags) < self.excluded_depth:
+                self.excluded_depth = None
 
 
-def extract_body(html_text: str) -> tuple[str | None, str | None]:
-    parser = BodyParser()
+def extract_body(html_text: str, *, source: Source | None = None) -> tuple[str | None, str | None]:
+    source_id = source.source_id if source else None
+    if source_id == "dr-nyheder":
+        # Short-news permalinks include neighboring stories as untyped article nodes.
+        parser = BodyParser(primary=("itemtype", "https://schema.org/NewsArticle"),
+                            body=("itemprop", "articleBody"))
+    elif source_id == "tv2-nyheder":
+        parser = BodyParser(primary=("class", "tc_article__wrapper"),
+                            body=("class", "tc_richcontent"),
+                            excluded_classes=frozenset({"tc_embed", "tc_page__header", "tc_page__footer"}))
+    elif source_id in {"newsmaker-ro", "newsmaker-ru"}:
+        # NewsMaker appends further articles below the one at the requested URL.
+        parser = BodyParser(
+            primary_tag="div", primary=("class", "js-current-article", "big-article"),
+            body=("class", "elementor-widget-theme-post-content"),
+            excluded_classes=frozenset({"js-infinite-scroll-article"}),
+        )
+    elif source_id == "meduza-ru":
+        # The only <article> nodes on some permalinks are recommendation cards.
+        article_content = ("class", "GeneralMaterial-module-article")
+        parser = BodyParser(
+            primary_tag="div", primary=article_content, body=article_content,
+            excluded_classes=frozenset({"RelatedMaterial-module-root", "RelatedList-module-root",
+                                        "ToolbarContainer-module-ad"}),
+            excluded_class_prefixes=("Toolbar-module_", "EmbedBlock-module_"),
+        )
+    else:
+        parser = BodyParser()
     parser.feed(html_text)
-    text = " ".join(" ".join(parser.parts).split())
+    separator = "" if parser.body else " "
+    text = " ".join(separator.join(parser.parts).split())
     return (text or None, parser.published)
