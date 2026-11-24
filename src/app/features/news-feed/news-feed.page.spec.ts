@@ -4,8 +4,9 @@ import {
   provideHttpClientTesting,
 } from "@angular/common/http/testing";
 import { TestBed } from "@angular/core/testing";
-import { provideRouter } from "@angular/router";
-import { describe, expect, it } from "vitest";
+import { provideRouter, Router } from "@angular/router";
+import { describe, expect, it, vi } from "vitest";
+import { DEFAULT_FEED_FILTERS } from "./news-filtering";
 import { NEWS_READ_REPOSITORY } from "../../core/data-access/news-read-repository";
 import { StaticNewsRepository } from "../../core/data-access/static-news-repository";
 import { NewsFeedPage } from "./news-feed.page";
@@ -71,6 +72,37 @@ describe("NewsFeedPage", () => {
         'a[href="/news/demo-one"]',
       ),
     ).not.toBeNull();
+    http.verify();
+  });
+
+  it("writes a shareable combined filter selection without a reload", async () => {
+    const { fixture, http, request } = setup();
+    request().flush({ schema_version: 1, revision: "fixture", items: [] });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const navigate = vi
+      .spyOn(TestBed.inject(Router), "navigate")
+      .mockResolvedValue(true);
+    fixture.componentInstance.updateFilters({
+      ...DEFAULT_FEED_FILTERS,
+      view: "dk-media",
+      about: "UA",
+      sort: "oldest",
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: expect.objectContaining({
+          view: "dk-media",
+          about: "UA",
+          sort: "oldest",
+        }),
+        queryParamsHandling: "merge",
+        replaceUrl: true,
+      }),
+    );
     http.verify();
   });
 

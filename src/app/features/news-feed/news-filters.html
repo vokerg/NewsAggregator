@@ -1,0 +1,67 @@
+<section class="filter-panel" aria-labelledby="filter-title">
+  <div class="filter-heading">
+    <div>
+      <h2 id="filter-title">Explore the catalog</h2>
+      <p>Filters combine; unknown classifications are kept separate.</p>
+    </div>
+    <button type="button" class="clear-button" (click)="clear()">
+      Clear filters
+    </button>
+  </div>
+
+  <div class="filter-grid">
+    @for (facet of facets; track facet.key) {
+    <div class="filter-field">
+      <label [for]="'filter-' + facet.key">{{ facet.title }}</label>
+      <select
+        [id]="'filter-' + facet.key"
+        [value]="filters()[facet.key]"
+        #choice
+        (change)="changeFacet(facet.key, choice.value)"
+      >
+        <option value="">All</option>
+        @for (option of options()[facet.key]; track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+    </div>
+    }
+    <div class="filter-field">
+      <label for="filter-from">From (UTC)</label>
+      <input
+        id="filter-from"
+        type="date"
+        [value]="filters().from"
+        #fromDate
+        (change)="changeDate('from', fromDate.value)"
+      />
+    </div>
+    <div class="filter-field">
+      <label for="filter-to">To (UTC)</label>
+      <input
+        id="filter-to"
+        type="date"
+        [value]="filters().to"
+        #toDate
+        (change)="changeDate('to', toDate.value)"
+      />
+    </div>
+    <div class="filter-field">
+      <label for="filter-sort">Sort by</label>
+      <select
+        id="filter-sort"
+        [value]="filters().sort"
+        #sortChoice
+        (change)="changeSort(sortChoice.value === 'oldest' ? 'oldest' : sortChoice.value === 'source' ? 'source' : 'newest')"
+      >
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="source">Source name</option>
+      </select>
+    </div>
+  </div>
+  <p class="filter-hint">
+    Date range uses the publication date if present, otherwise the first-seen
+    date. Both are interpreted in UTC. VIEW FROM does not imply ABOUT.
+  </p>
+</section>

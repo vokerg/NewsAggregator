@@ -1,6 +1,12 @@
 import { NewsCatalog, NewsItem } from "./news";
 
 const CATALOG_KEYS = ["schema_version", "revision", "items"];
+const OPTIONAL_ITEM_KEYS = [
+  "tags",
+  "language",
+  "publisher_country",
+  "editorial_labels",
+];
 const ITEM_KEYS = [
   "id",
   "title",
@@ -124,8 +130,12 @@ function isSafePublisherUrl(value: unknown): value is string {
 function isNewsItem(value: unknown): value is NewsItem {
   if (
     !isRecord(value) ||
-    (!hasExactKeys(value, ITEM_KEYS) &&
-      !hasExactKeys(value, [...ITEM_KEYS, "tags"]))
+    !ITEM_KEYS.every((key) =>
+      Object.prototype.hasOwnProperty.call(value, key),
+    ) ||
+    Object.keys(value).some(
+      (key) => ![...ITEM_KEYS, ...OPTIONAL_ITEM_KEYS].includes(key),
+    )
   )
     return false;
 
@@ -142,6 +152,14 @@ function isNewsItem(value: unknown): value is NewsItem {
     isStringList(value["perspective_ids"]) &&
     isStringList(value["about_country_codes"]) &&
     (value["tags"] === undefined || isStringList(value["tags"])) &&
+    (value["language"] === undefined ||
+      (typeof value["language"] === "string" &&
+        /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(value["language"]))) &&
+    (value["publisher_country"] === undefined ||
+      (typeof value["publisher_country"] === "string" &&
+        /^[A-Z]{2}$/.test(value["publisher_country"]))) &&
+    (value["editorial_labels"] === undefined ||
+      isStringList(value["editorial_labels"])) &&
     typeof value["extraction_status"] === "string" &&
     ["extracted", "unavailable", "failed", "not_requested"].includes(
       value["extraction_status"],

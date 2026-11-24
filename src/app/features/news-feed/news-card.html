@@ -1,6 +1,10 @@
 <article class="article-card">
   <p class="source">{{ item().source_name }}</p>
-  <h2><a [routerLink]="['/news', item().id]">{{ item().title }}</a></h2>
+  <h2>
+    <a [routerLink]="['/news', item().id]" queryParamsHandling="preserve"
+      >{{ item().title }}</a
+    >
+  </h2>
   <p class="attribution">
     <strong>View from:</strong> {{ item().perspective_ids.join(', ') ||
     'Unknown' }}
@@ -32,7 +36,9 @@
     }
   </p>
   <div class="card-actions">
-    <a [routerLink]="['/news', item().id]">Read details</a>
+    <a [routerLink]="['/news', item().id]" queryParamsHandling="preserve"
+      >Read details</a
+    >
     <a [href]="item().original_url" target="_blank" rel="noopener noreferrer">
       Open original <span aria-hidden="true">↗</span>
     </a>

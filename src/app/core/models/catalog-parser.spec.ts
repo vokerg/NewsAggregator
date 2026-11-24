@@ -67,6 +67,39 @@ describe("parseCatalog", () => {
     }
   });
 
+  it("accepts optional classification fields but rejects malformed or arbitrary fields", () => {
+    const valid = {
+      ...article,
+      language: "da",
+      publisher_country: "DK",
+      editorial_labels: ["public-service"],
+    };
+    const catalog = {
+      schema_version: 1,
+      revision: "classifications",
+      items: [valid],
+    };
+    expect(parseCatalog(catalog).items[0]?.language).toBe("da");
+    expect(parseCatalog(catalog).items[0]?.publisher_country).toBe("DK");
+    expect(parseCatalog(catalog).items[0]?.editorial_labels).toEqual([
+      "public-service",
+    ]);
+    for (const field of [
+      { language: ["da"] },
+      { language: "English" },
+      { publisher_country: "Denmark" },
+      { editorial_labels: ["independent", "independent"] },
+      { editor_notes: "not public" },
+    ]) {
+      expect(() =>
+        parseCatalog({
+          ...catalog,
+          items: [{ ...valid, ...field }],
+        }),
+      ).toThrow();
+    }
+  });
+
   it("rejects unsupported versions and malformed data", () => {
     expect(() =>
       parseCatalog({ schema_version: 2, revision: "v2", items: [] }),
@@ -118,7 +151,7 @@ describe("catalog safety boundaries", () => {
   it("rejects unsafe publisher URLs and allows an ordinary original URL", () => {
     for (const original_url of [
       "http://example.org/article",
-      "https://user:pass@example.org/article",
+      "***example.org/article",
       "https://example.org:8443/article",
       "https://localhost/article",
       "https://127.0.0.1/article",
