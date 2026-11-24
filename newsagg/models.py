@@ -159,7 +159,7 @@ class Source:
             raise ValidationError("empty display_name")
         if type(data["enabled"]) is not bool or type(data["extract_body"]) is not bool:
             raise ValidationError("enabled and extract_body must be booleans")
-        if data["adapter"] not in ("rss", "web"):
+        if data["adapter"] not in ("rss", "web", "rossiya24-episodes"):
             raise ValidationError("unsupported adapter")
         home, index = require_url(data["canonical_home_url"]), require_url(data["index_url"])
         country = data["publisher_country"]
@@ -186,8 +186,10 @@ class Source:
         prefix = data["link_path_prefix"]
         if not isinstance(prefix, str) or not prefix.startswith("/") or ".." in prefix or len(prefix) > 100:
             raise ValidationError("invalid link_path_prefix")
-        if data["rights_profile"] not in ("unknown", "metadata_only", "licensed_text"):
+        if data["rights_profile"] not in ("unknown", "metadata_only", "licensed_text", "local_only"):
             raise ValidationError("invalid rights_profile")
+        if data["adapter"] == "rossiya24-episodes" and data["rights_profile"] != "local_only":
+            raise ValidationError("Rossiya 24 episode records require local_only rights")
         return cls(sid, name, data["enabled"], home, index, data["adapter"], country, langs,
                    perspectives, tuple(labels), hosts, data["cadence_minutes"], data["max_pages"],
                    data["max_items"], data["extract_body"], tag, prefix, data["rights_profile"])

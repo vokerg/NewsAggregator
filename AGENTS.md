@@ -1,6 +1,6 @@
 # NewsAggregator — agent operating contract
 
-This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. The opt-in Python collector (#8) supports DR Nyheder, TV 2 Nyheder, both NewsMaker editions and Russian-language Meduza (#9–#12). The Angular shell (#1) and reader (#2) use synthetic fixtures. Production scheduling, dataset publication, website deployment and the LLM service are pending.
+This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. The opt-in Python collector supports the sources listed in `config/sources.json`. Rossiya 24 episode records go to the local research archive. The Angular shell (#1) and reader (#2) use synthetic fixtures. Production scheduling, dataset publication, website deployment and the LLM service are pending.
 
 ## Mandatory context
 
