@@ -26,6 +26,8 @@ export interface NewsCatalog {
   readonly schema_version: 1;
   readonly revision: string;
   readonly items: readonly NewsItem[];
+  /** Present for v2 day partitions; filters apply only to the loaded page. */
+  readonly page_info?: { readonly page: number; readonly total_pages: number; readonly total_items: number };
 }
 
 /**
