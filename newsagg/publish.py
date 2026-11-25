@@ -15,6 +15,7 @@ import shutil
 import sys
 import tempfile
 from uuid import uuid4
+from urllib.parse import urlsplit
 
 from .models import ValidationError, load_registry, parse_timestamp
 from .runtime import ERROR_CODES, SOURCE_STATES, validate_public_item
@@ -37,6 +38,10 @@ def _public_item(row: dict, sources: dict) -> dict:
     source = sources[sid]
     if source.rights_profile == "local_only":
         raise ValidationError("local-only source cannot be published")
+    host = urlsplit(row["original_url"]).hostname
+    if not any(host == allowed or host.endswith("." + allowed)
+               for allowed in source.allowed_hosts):
+        raise ValidationError("public article URL is outside its publisher allowlist")
     if not SAFE_ID.fullmatch(row["item_id"]):
         raise ValidationError("unsafe item ID")
     # Historical perspective is captured on the item; never recalculate it
