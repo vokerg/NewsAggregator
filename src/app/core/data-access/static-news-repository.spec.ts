@@ -171,18 +171,22 @@ describe("StaticNewsRepository", () => {
     let result: unknown;
     repository.loadCatalog(1).subscribe((catalog) => (result = catalog));
     const revision = "data-1234567890abcdef12345678";
-    http.expectOne("https://example.org/NewsAggregator/catalog/manifest.json").flush({
-      schema_version: 2,
-      revision,
-      total_items: 2,
-      pages: [
-        { day: "2026-11-19", part: 1, count: 1 },
-        { day: "2026-11-18", part: 1, count: 1 },
-      ],
-    });
-    http.expectOne(
-      `https://example.org/NewsAggregator/catalog/days/2026-11-18/1.json?rev=${revision}`,
-    ).flush({ schema_version: 1, revision, items: [item] });
+    http
+      .expectOne("https://example.org/NewsAggregator/catalog/manifest.json")
+      .flush({
+        schema_version: 2,
+        revision,
+        total_items: 2,
+        pages: [
+          { day: "2026-11-19", part: 1, count: 1 },
+          { day: "2026-11-18", part: 1, count: 1 },
+        ],
+      });
+    http
+      .expectOne(
+        `https://example.org/NewsAggregator/catalog/days/2026-11-18/1.json?rev=${revision}`,
+      )
+      .flush({ schema_version: 1, revision, items: [item] });
     http.verify();
     expect(result).toEqual({
       schema_version: 1,
@@ -197,21 +201,33 @@ describe("StaticNewsRepository", () => {
     let result: unknown;
     const revision = "data-1234567890abcdef12345678";
     repository.loadArticle(item.id).subscribe((article) => (result = article));
-    http.expectOne("https://example.org/NewsAggregator/catalog/manifest.json").flush({
-      schema_version: 2,
-      revision,
-      total_items: 1,
-      pages: [{ day: "2026-11-18", part: 1, count: 1 }],
-    });
-    http.expectOne(
-      `https://example.org/NewsAggregator/catalog/metadata/${item.id}.json?rev=${revision}`,
-    ).flush({ schema_version: 1, revision, items: [item] });
-    http.expectOne(
-      `https://example.org/NewsAggregator/catalog/items/${item.id}.json?rev=${revision}`,
-    ).flush({ schema_version: 1, item_id: item.id, body: { kind: "unavailable", reason: "rights" } });
+    http
+      .expectOne("https://example.org/NewsAggregator/catalog/manifest.json")
+      .flush({
+        schema_version: 2,
+        revision,
+        total_items: 1,
+        pages: [{ day: "2026-11-18", part: 1, count: 1 }],
+      });
+    http
+      .expectOne(
+        `https://example.org/NewsAggregator/catalog/metadata/${item.id}.json?rev=${revision}`,
+      )
+      .flush({ schema_version: 1, revision, items: [item] });
+    http
+      .expectOne(
+        `https://example.org/NewsAggregator/catalog/items/${item.id}.json?rev=${revision}`,
+      )
+      .flush({
+        schema_version: 1,
+        item_id: item.id,
+        body: { kind: "unavailable", reason: "rights" },
+      });
     http.verify();
     expect(result).toEqual({
-      item, revision, body: { kind: "unavailable", reason: "rights" },
+      item,
+      revision,
+      body: { kind: "unavailable", reason: "rights" },
     });
   });
 
@@ -219,14 +235,22 @@ describe("StaticNewsRepository", () => {
     const { repository, http } = setup();
     let error: unknown;
     const revision = "data-1234567890abcdef12345678";
-    repository.loadArticle(item.id).subscribe({ error: (err) => (error = err) });
-    http.expectOne("https://example.org/NewsAggregator/catalog/manifest.json").flush({
-      schema_version: 2, revision, total_items: 1,
-      pages: [{ day: "2026-11-18", part: 1, count: 1 }],
-    });
-    http.expectOne(
-      `https://example.org/NewsAggregator/catalog/metadata/${item.id}.json?rev=${revision}`,
-    ).flush({ schema_version: 1, revision: "wrong", items: [item] });
+    repository
+      .loadArticle(item.id)
+      .subscribe({ error: (err) => (error = err) });
+    http
+      .expectOne("https://example.org/NewsAggregator/catalog/manifest.json")
+      .flush({
+        schema_version: 2,
+        revision,
+        total_items: 1,
+        pages: [{ day: "2026-11-18", part: 1, count: 1 }],
+      });
+    http
+      .expectOne(
+        `https://example.org/NewsAggregator/catalog/metadata/${item.id}.json?rev=${revision}`,
+      )
+      .flush({ schema_version: 1, revision: "wrong", items: [item] });
     http.verify();
     expect(error).toBeInstanceOf(Error);
   });
