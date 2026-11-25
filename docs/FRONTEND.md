@@ -137,3 +137,22 @@ The [pre-merge browser review](https://github.com/vokerg/NewsAggregator/actions/
 Pure filtering and query-parameter helpers power a small standalone Angular panel and lazy-loaded, catalog-derived source browser. The filter state is derived from the route's query parameters via Signals; bookmarks and browser back/forward preserve independent ABOUT and VIEW FROM selections. Every facet intersects the other selected facets, and unknown/unclassified source metadata is represented explicitly instead of inferred. No editorial label represents a factual truth verdict.
 
 Date boundaries are inclusive UTC days using normalized zoned publication timestamps, with first-seen fallback when publication time is unknown. This release introduces no runtime API, publisher collector, static publisher registry, PWA, deployment or public-article rights claims. Test evidence lives on the issue #3 PR; physical-device accessibility checks and complete historical search require later validation.
+
+## Read-model v2 pagination (#4, 2026-11-25)
+
+Angular continues to consume the v1 bounded synthetic catalog for tests.
+When the build includes a committed collector public archive, the static
+publisher replaces the fixture with a v2 index and date-partitioned v1-format
+pages (100 items maximum). The repository validates the index, page dates,
+revision and per-item source metadata, and makes one page available at a time
+through `loadCatalog(page)`. `?catalogPage=N` preserves navigation through
+reloads while retaining other filters; filters apply only to the loaded
+partition, not to all stored articles. Metadata lookup by safe stable ID allows
+direct details for older items without querying every page.
+
+The public body is always marked unavailable for collector-derived items,
+irrespective of extraction success. These generated files are metadata
+projections, not authenticated licensed text. The Pages workflow builds for
+`/NewsAggregator/` and uses hash links; real Pages/deep-link deployment,
+offline cache freshness and complete on-device accessibility checks are still
+external verification tasks.
