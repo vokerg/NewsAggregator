@@ -192,7 +192,12 @@ describe("StaticNewsRepository", () => {
       schema_version: 1,
       revision,
       items: [item],
-      page_info: { page: 1, total_pages: 2, total_items: 2, coverage_status: "unknown" },
+      page_info: {
+        page: 1,
+        total_pages: 2,
+        total_items: 2,
+        coverage_status: "unknown",
+      },
     });
   });
 
