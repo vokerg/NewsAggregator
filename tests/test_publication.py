@@ -8,7 +8,7 @@ from types import SimpleNamespace
 import tempfile
 import unittest
 
-from newsagg.models import ValidationError, load_registry
+from newsagg.models import ValidationError, canonical_url, item_id, load_registry
 from newsagg.publish import publish
 from newsagg.runtime import make_item
 
@@ -110,6 +110,15 @@ class PublisherTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             publish(self.archive, REGISTRY, self.output)
 
+
+    def test_rejects_cross_publisher_url_even_if_id_is_consistent(self):
+        row = self.row(20)
+        row["original_url"] = "https://evil.example.org/other/story"
+        row["canonical_url"] = canonical_url(row["original_url"])
+        row["item_id"] = item_id(row["source_id"], row["canonical_url"])
+        self.write([row])
+        with self.assertRaises(ValidationError):
+            publish(self.archive, REGISTRY, self.output)
 
     def test_verified_partial_coverage_and_mismatched_status(self):
         self.write([self.row(7)])
