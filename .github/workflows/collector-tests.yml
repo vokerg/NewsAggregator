@@ -29,7 +29,7 @@ jobs:
       - name: Offline public catalog export and rights checks
         shell: bash
         run: |
-          python -m newsagg.publish --archive "$RUNNER_TEMP/newsagg/public/items.ndjson" --registry tests/fixtures/registry.json --output "$RUNNER_TEMP/catalog"
+          python -m newsagg.publish --archive "$RUNNER_TEMP/newsagg/public/items.ndjson" --registry tests/fixtures/registry.json --status "$RUNNER_TEMP/newsagg/public/status.json" --output "$RUNNER_TEMP/catalog"
           python - <<'PY'
           import json, os
           from pathlib import Path
