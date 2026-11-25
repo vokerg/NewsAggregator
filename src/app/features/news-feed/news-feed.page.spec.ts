@@ -30,6 +30,15 @@ function setup() {
 }
 
 describe("NewsFeedPage", () => {
+  it("cancels a superseded catalog request before loading again", () => {
+    const { fixture, http, request } = setup();
+    const first = request();
+    fixture.componentInstance.reload();
+    expect(first.cancelled).toBe(true);
+    request().flush({ schema_version: 1, revision: "fixture", items: [] });
+    http.verify();
+  });
+
   it("renders the genuine empty state for an empty catalog", async () => {
     const { fixture, http, request } = setup();
     expect(fixture.nativeElement.textContent).toContain("Loading news catalog");
