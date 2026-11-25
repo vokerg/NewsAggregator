@@ -37,6 +37,8 @@ describe("CatalogIndex", () => {
 
   it("rejects malformed dates, excessive page sizes and inconsistent totals", () => {
     expect(() => parseCatalogIndex({ ...index, total_items: 2 })).toThrow();
+    expect(() => parseCatalogIndex({ ...index, coverage_status: "complete" })).toThrow();
+    expect(parseCatalogIndex({ ...index, coverage_status: "partial" }).schema_version).toBe(2);
     expect(() =>
       parseCatalogIndex({
         ...index,
