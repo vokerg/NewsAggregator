@@ -23,7 +23,12 @@ import { NewsCard } from "./news-card";
 
 type FeedState =
   | { kind: "loading" }
-  | { kind: "ready"; revision: string; items: readonly NewsItem[]; pageInfo?: { page: number; total_pages: number; total_items: number } }
+  | {
+      kind: "ready";
+      revision: string;
+      items: readonly NewsItem[];
+      pageInfo?: { page: number; total_pages: number; total_items: number };
+    }
   | { kind: "error" };
 
 @Component({
@@ -61,17 +66,21 @@ export class NewsFeedPage {
   readonly count = computed(() => this.visibleItems().length);
 
   constructor() {
-    this.route.queryParamMap.pipe(
-      map((params) => {
-        const raw = params.get("catalogPage") ?? "1";
-        return /^[1-9][0-9]{0,3}$/.test(raw) ? Math.min(Number(raw), 2000) - 1 : 0;
-      }),
-      distinctUntilChanged(),
-      takeUntilDestroyed(this.destroyRef),
-    ).subscribe((page) => {
-      this.page.set(page);
-      this.reload();
-    });
+    this.route.queryParamMap
+      .pipe(
+        map((params) => {
+          const raw = params.get("catalogPage") ?? "1";
+          return /^[1-9][0-9]{0,3}$/.test(raw)
+            ? Math.min(Number(raw), 2000) - 1
+            : 0;
+        }),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((page) => {
+        this.page.set(page);
+        this.reload();
+      });
   }
 
   changePage(page: number): void {
