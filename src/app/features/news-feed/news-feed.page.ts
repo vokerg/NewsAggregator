@@ -8,7 +8,7 @@ import {
 } from "@angular/core";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
-import { distinctUntilChanged, map } from "rxjs";
+import { distinctUntilChanged, map, Subscription } from "rxjs";
 import { NewsItem } from "../../core/models/news";
 import { NEWS_READ_REPOSITORY } from "../../core/data-access/news-read-repository";
 import {
@@ -48,6 +48,7 @@ export class NewsFeedPage {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private catalogRequest?: Subscription;
 
   readonly state = signal<FeedState>({ kind: "loading" });
   readonly page = signal(0);
@@ -107,8 +108,10 @@ export class NewsFeedPage {
   }
 
   reload(): void {
+    // A slower old page must never replace the latest navigation result.
+    this.catalogRequest?.unsubscribe();
     this.state.set({ kind: "loading" });
-    this.repository
+    this.catalogRequest = this.repository
       .loadCatalog(this.page())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
