@@ -4,7 +4,11 @@ import { inject, Injectable } from "@angular/core";
 import { catchError, map, Observable, of, switchMap, throwError } from "rxjs";
 import { parseArticleDocument } from "../models/article-parser";
 import { parseCatalog } from "../models/catalog-parser";
-import { CatalogIndex, parseCatalogIndex, parseIndexedPage } from "../models/catalog-index";
+import {
+  CatalogIndex,
+  parseCatalogIndex,
+  parseIndexedPage,
+} from "../models/catalog-index";
 import { NewsArticle, NewsCatalog, NewsItem } from "../models/news";
 import { NewsReadRepository } from "./news-read-repository";
 
@@ -33,7 +37,11 @@ export class StaticNewsRepository implements NewsReadRepository {
         if (index.schema_version === 1) {
           return of(index);
         }
-        if (!Number.isSafeInteger(page) || page < 0 || page >= index.pages.length) {
+        if (
+          !Number.isSafeInteger(page) ||
+          page < 0 ||
+          page >= index.pages.length
+        ) {
           if (page === 0 && index.pages.length === 0) {
             return of({
               schema_version: 1 as const,
@@ -62,8 +70,14 @@ export class StaticNewsRepository implements NewsReadRepository {
     );
   }
 
-  private loadBody(item: NewsItem, revision: string, legacy = false): Observable<NewsArticle> {
-    const url = this.asset(`items/${item.id}.json${legacy ? "" : `?rev=${revision}`}`);
+  private loadBody(
+    item: NewsItem,
+    revision: string,
+    legacy = false,
+  ): Observable<NewsArticle> {
+    const url = this.asset(
+      `items/${item.id}.json${legacy ? "" : `?rev=${revision}`}`,
+    );
     return this.http.get<unknown>(url).pipe(
       map((value): NewsArticle => {
         const document = parseArticleDocument(value, item.id);
