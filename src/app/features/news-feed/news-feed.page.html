@@ -50,6 +50,15 @@
   <p class="catalog-scope">
     Filters apply to the current page, not to the complete archive.
   </p>
+  @if (paging.coverage_status === 'unknown') {
+  <p role="status" class="catalog-scope">
+    Collection coverage has not been verified for this revision.
+  </p>
+  } @else if (paging.coverage_status === 'partial' || paging.coverage_status === 'failed') {
+  <p role="alert" class="catalog-scope">
+    The last collection reported {{ paging.coverage_status }} coverage; some items may be missing.
+  </p>
+  }
   } @if (feed.items.length === 0) {
   <div class="status-panel" role="status">
     <h2>No articles yet</h2>
