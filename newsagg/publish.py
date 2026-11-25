@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 from collections import defaultdict
-from datetime import datetime
 import hashlib
 import json
 from pathlib import Path
@@ -15,6 +14,7 @@ import re
 import shutil
 import sys
 import tempfile
+from uuid import uuid4
 
 from .models import ValidationError, load_registry
 from .runtime import validate_public_item
@@ -27,11 +27,6 @@ SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 
 def _json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
-
-
-def _date(row: dict) -> str:
-    # Publisher publication date, or first observation where unknown; always UTC.
-    return (row["published_at"] or row["first_seen_at"])[:10]
 
 
 def _public_item(row: dict, sources: dict) -> dict:
@@ -119,8 +114,11 @@ def publish(archive: Path, registry: Path, output: Path) -> dict:
 
     # All files are assembled outside the destination; validation failure
     # cannot publish a partially projected page or a restricted body.
+    if output.is_symlink():
+        raise ValidationError("unsafe output symlink")
     output = output.resolve()
-    if output.is_symlink() or output == Path(output.anchor):
+    if (output == Path(output.anchor) or archive.resolve().is_relative_to(output)
+            or registry.resolve().is_relative_to(output)):
         raise ValidationError("unsafe output location")
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".catalog-stage-", dir=output.parent) as stage:
@@ -147,7 +145,7 @@ def publish(archive: Path, registry: Path, output: Path) -> dict:
             # Do not silently wipe an unrelated directory.
             if not (output / "manifest.json").is_file():
                 raise ValidationError("existing output is not a catalog")
-            backup = output.parent / (".catalog-old-" + next(tempfile._get_candidate_names()))
+            backup = output.parent / (".catalog-old-" + uuid4().hex)
             output.rename(backup)
             try:
                 root.rename(output)
