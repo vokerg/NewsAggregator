@@ -28,17 +28,29 @@
   />
   @if (feed.pageInfo; as paging) {
   <nav aria-label="Catalog pages" class="catalog-pages">
-    <button type="button" [disabled]="paging.page === 0" (click)="changePage(paging.page - 1)">
+    <button
+      type="button"
+      [disabled]="paging.page === 0"
+      (click)="changePage(paging.page - 1)"
+    >
       Newer
     </button>
-    <span>Page {{ paging.total_pages ? paging.page + 1 : 0 }} of {{ paging.total_pages }} · {{ paging.total_items }} archived articles</span>
-    <button type="button" [disabled]="paging.page >= paging.total_pages - 1" (click)="changePage(paging.page + 1)">
+    <span
+      >Page {{ paging.total_pages ? paging.page + 1 : 0 }} of {{
+      paging.total_pages }} · {{ paging.total_items }} archived articles</span
+    >
+    <button
+      type="button"
+      [disabled]="paging.page >= paging.total_pages - 1"
+      (click)="changePage(paging.page + 1)"
+    >
       Older
     </button>
   </nav>
-  <p class="catalog-scope">Filters apply to the current page, not to the complete archive.</p>
-  }
-  @if (feed.items.length === 0) {
+  <p class="catalog-scope">
+    Filters apply to the current page, not to the complete archive.
+  </p>
+  } @if (feed.items.length === 0) {
   <div class="status-panel" role="status">
     <h2>No articles yet</h2>
     <p>
