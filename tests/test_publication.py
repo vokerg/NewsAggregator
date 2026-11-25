@@ -13,7 +13,7 @@ from newsagg.publish import publish
 from newsagg.runtime import make_item
 
 
-REGISTRY = Path("config/sources.json")
+REGISTRY = Path("tests/fixtures/registry.json")
 
 
 class PublisherTests(unittest.TestCase):
@@ -26,11 +26,11 @@ class PublisherTests(unittest.TestCase):
         self.output = self.root / "public" / "catalog"
         _, sources = load_registry(REGISTRY)
         self.sources = {s.source_id: s for s in sources}
-        self.source = self.sources["dr-nyheder"]
+        self.source = self.sources["example-rss"]
 
     def row(self, i: int, *, published="2026-11-18T23:59:59Z", status="extracted"):
         candidate = SimpleNamespace(
-            original_url=f"https://www.dr.dk/nyheder/test/{i}",
+            original_url=f"https://news.example.org/stories/{i}",
             headline=f"News item {i}",
             published_at=published,
             publisher_description=None,
