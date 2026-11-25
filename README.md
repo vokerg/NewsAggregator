@@ -131,3 +131,9 @@ clearly labelled synthetic demo. This workflow does **not** collect real
 news or commit publisher data itself. GitHub Pages source settings, the
 deployment run and a live `/NewsAggregator/` URL must be verified separately;
 the presence of a workflow does not establish the site is deployed.
+
+Optional: also commit the matching reviewed `data/public/status.json`.
+The publisher validates it and projects only `coverage_status` (unknown if
+absent) so the UI does not imply complete source coverage. Use
+`--status data/public/status.json` for a matching local export; the Pages
+workflow automatically includes it when present.
