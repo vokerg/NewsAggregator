@@ -16,8 +16,8 @@ import sys
 import tempfile
 from uuid import uuid4
 
-from .models import ValidationError, load_registry
-from .runtime import validate_public_item
+from .models import ValidationError, load_registry, parse_timestamp
+from .runtime import ERROR_CODES, SOURCE_STATES, validate_public_item
 
 PAGE_SIZE = 100
 MAX_ITEMS = 100_000
@@ -92,11 +92,52 @@ def _write(root: Path, path: str, value: object) -> None:
     destination.write_text(_json(value), encoding="utf-8")
 
 
-def publish(archive: Path, registry: Path, output: Path) -> dict:
+
+def _coverage(status_path: Path | None, sources: dict, timezone_name: str,
+              item_count: int) -> str:
+    """Project only a verified status enum, never source errors or URLs."""
+    if status_path is None:
+        return "unknown"
+    data = json.loads(status_path.read_text(encoding="utf-8"))
+    expected_keys = {"schema_version", "run_at", "timezone", "status",
+                     "configured_count", "enabled_count", "total_item_count", "sources"}
+    public = {sid: source for sid, source in sources.items() if source.rights_profile != "local_only"}
+    enabled = {sid for sid, source in public.items() if source.enabled}
+    if (not isinstance(data, dict) or set(data) != expected_keys or
+            type(data["schema_version"]) is not int or data["schema_version"] != 1 or
+            data["timezone"] != timezone_name or not isinstance(data["run_at"], str) or
+            parse_timestamp(data["run_at"]) != data["run_at"] or
+            type(data["total_item_count"]) is not int or data["total_item_count"] != item_count or
+            type(data["configured_count"]) is not int or data["configured_count"] != len(public) or
+            type(data["enabled_count"]) is not int or data["enabled_count"] != len(enabled) or
+            data["status"] not in SOURCE_STATES or not isinstance(data["sources"], dict) or
+            set(data["sources"]) != enabled):
+        raise ValidationError("invalid or mismatched collector coverage")
+    statuses = []
+    for row in data["sources"].values():
+        if (not isinstance(row, dict) or
+                set(row) != {"status", "discovered", "extracted", "skipped", "error_code"} or
+                row["status"] not in SOURCE_STATES or
+                row["error_code"] is not None and row["error_code"] not in ERROR_CODES):
+            raise ValidationError("invalid per-source collection status")
+        for key in ("discovered", "extracted", "skipped"):
+            if type(row[key]) is not int or not 0 <= row[key] <= 10_000:
+                raise ValidationError("invalid per-source collection count")
+        statuses.append(row["status"])
+    attempted = [state for state in statuses if state != "idle"]
+    derived = ("idle" if not attempted else "ok" if all(s == "ok" for s in attempted)
+               else "failed" if all(s == "failed" for s in attempted) else "partial")
+    if data["status"] != derived:
+        raise ValidationError("collector coverage conflicts with source states")
+    return derived
+
+
+def publish(archive: Path, registry: Path, output: Path, *, status: Path | None = None) -> dict:
     """Generate a full, independently validated projection or leave output unchanged."""
-    _, configured = load_registry(registry)
+    timezone_name, configured = load_registry(registry)
     sources = {s.source_id: s for s in configured}
     items = _load_rows(archive, sources)
+    coverage_status = _coverage(status, sources, timezone_name, len(items))
     by_day: dict[str, list[dict]] = defaultdict(list)
     for item in items:
         by_day[(item["published_at"] or item["first_seen_at"])[:10]].append(item)
@@ -110,7 +151,8 @@ def publish(archive: Path, registry: Path, output: Path) -> dict:
                           "count": min(PAGE_SIZE, len(by_day[day]) - offset)})
     if len(pages) > MAX_PAGES:
         raise ValidationError("archive exceeds maximum page count")
-    manifest = {"schema_version": 2, "revision": revision, "total_items": len(items), "pages": pages}
+    manifest = {"schema_version": 2, "revision": revision, "total_items": len(items), "pages": pages,
+                "coverage_status": coverage_status}
 
     # All files are assembled outside the destination; validation failure
     # cannot publish a partially projected page or a restricted body.
@@ -165,9 +207,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="public/items.ndjson, never research/items.ndjson")
     parser.add_argument("--registry", type=Path, default=Path("config/sources.json"))
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--status", type=Path, help="matching collector public/status.json")
     args = parser.parse_args(argv)
     try:
-        result = publish(args.archive, args.registry, args.output)
+        result = publish(args.archive, args.registry, args.output, status=args.status)
     except (ValueError, OSError, TypeError, KeyError, json.JSONDecodeError) as exc:
         print(f"publish rejected: {type(exc).__name__}", file=sys.stderr)
         return 1
