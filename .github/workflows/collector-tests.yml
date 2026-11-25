@@ -26,3 +26,20 @@ jobs:
           python -m newsagg --registry tests/fixtures/registry.json --fixture-map tests/fixtures/fixtures-map.json --output "$RUNNER_TEMP/newsagg" --at 2026-11-18T08:00:00Z
           python -m newsagg --registry tests/fixtures/registry.json --fixture-map tests/fixtures/fixtures-map.json --output "$RUNNER_TEMP/newsagg" --at 2026-11-18T08:00:00Z
           python -c 'import json,os,pathlib; p=pathlib.Path(os.environ["RUNNER_TEMP"])/"newsagg/public/items.ndjson"; rows=[json.loads(s) for s in p.read_text().splitlines()]; assert len(rows)==4 and len({r["item_id"] for r in rows})==4'
+      - name: Offline public catalog export and rights checks
+        shell: bash
+        run: |
+          python -m newsagg.publish --archive "$RUNNER_TEMP/newsagg/public/items.ndjson" --registry tests/fixtures/registry.json --output "$RUNNER_TEMP/catalog"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "catalog"
+          manifest = json.loads((root / "manifest.json").read_text())
+          assert manifest["schema_version"] == 2 and manifest["total_items"] == 4
+          assert sum(page["count"] for page in manifest["pages"]) == 4
+          assert len(list((root / "metadata").glob("*.json"))) == 4
+          for path in (root / "items").glob("*.json"):
+              body = json.loads(path.read_text())["body"]
+              assert body["kind"] == "unavailable"
+              assert "paragraphs" not in body
+          PY
