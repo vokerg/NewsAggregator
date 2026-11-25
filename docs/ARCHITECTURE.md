@@ -180,3 +180,11 @@ GitHub Pages artifact for the `/NewsAggregator/` subpath. If there is no
 committed dataset, the workflow retains the conspicuously labelled synthetic
 fixture. GitHub Pages configuration and the deployed URL must be confirmed
 on the actual site: CI/build success alone is **not** deployment evidence.
+
+When a matching committed collector `status.json` accompanies the archive, the
+publisher validates the status version, timestamps, source-ID set, row counts,
+total item count and aggregate state before projecting only a
+`coverage_status` enum into the manifest. Without verified status this field
+is `unknown` (not a claim of completeness); the UI distinguishes unknown,
+partial and failed collection. The producer also enforces the registry
+publisher-host allowlist for original URLs.
