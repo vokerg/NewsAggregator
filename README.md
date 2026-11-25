@@ -102,3 +102,32 @@ The Angular reader supports combinable, shareable URL filters on the synthetic c
 The source browser at the hash route **/#/sources** lists publishers with items in the current public catalog and links to filtered feeds; it does not represent the full source registry or live ingestion. A GitHub Pages feed deep-link looks like **/NewsAggregator/#/news?view=dk-media&about=UA**. The URL preserves combinations and clearing selections removes their query parameters. The existing v1 catalog accepts optional validated language, publisher_country and editorial_labels metadata in addition to tags.
 
 These remain **synthetic demonstration records**, not verified publisher classifications, a deployed website or a complete historical catalog. Source browsing and filtering operate only on the records in the current bounded read model; issue #4 owns partitioned/complete read-model publication.
+
+## Commit-driven public catalog (issue #4)
+
+The browser reads bounded JSON data, not the collector's NDJSON archive.
+To **manually review and publish a dataset** from a local collector output,
+place the reviewed metadata-only `.local/newsagg/public/items.ndjson` at
+`data/public/items.ndjson` and commit it. Never commit `research/`,
+`state.json`, publisher body text, raw capture, cookies or API keys.
+The offline publisher is fail-closed and replaces only the generated catalog:
+
+```bash
+python -m newsagg.publish --archive data/public/items.ndjson \
+  --registry config/sources.json --output public/catalog
+python -m unittest discover -s tests -v
+npm run test:ci && npm run build:pages
+```
+
+The producer emits a schema-v2 versioned manifest, UTC day partitions of up
+to 100 metadata items, direct per-ID metadata and explicit unavailable-body
+documents. The reader lazily requests one page at a time; selected filters
+apply to that page only. The preserved original URL, captured perspective,
+language and publisher provenance remain distinct from ABOUT geography.
+
+On `main` pushes, `.github/workflows/pages.yml` builds the Pages artifact
+from any committed `data/public/items.ndjson`, otherwise preserving the
+clearly labelled synthetic demo. This workflow does **not** collect real
+news or commit publisher data itself. GitHub Pages source settings, the
+deployment run and a live `/NewsAggregator/` URL must be verified separately;
+the presence of a workflow does not establish the site is deployed.
