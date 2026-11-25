@@ -142,3 +142,41 @@ NDJSON рассматривается как прозрачный экспорт
 6. Каждый item и summary evidence ID ведут к проверенному original_url.
 7. Недоступность body и неполный crawl видимы как partial.
 8. Публичный read model не раскрывает секреты или неразрешённый full text.
+
+## 2026-11-25 — issue #4: commit-driven public read-model contract (PR)
+
+The opt-in collector's `public/items.ndjson` is metadata-only, and is **not** loaded
+by the browser. The offline, standard-library `python -m newsagg.publish`
+step validates every public archive record against `validate_public_item`,
+the configured source registry and source-rights policy. All rows remain in
+the collector archive; this step only emits public display projections. Neither
+raw HTML, publisher article bodies, body lengths, canonical URLs, local-only
+research items nor credentials are emitted into the static read model.
+
+The read model is `catalog/manifest.json` schema **v2**: a content-hash
+`revision`, `total_items`, and ordered bounded page descriptors
+`{day, part, count}`. Pages are `catalog/days/YYYY-MM-DD/N.json`, max 100
+records each, with the strict v1 metadata item schema. Dates are UTC
+publication dates, falling back to UTC first-seen date if unknown.
+`catalog/metadata/<safe-id>.json` supports old-item deep links without
+loading the whole archive, and `catalog/items/<safe-id>.json` explicitly
+returns unavailable public body for collector output. All per-item links
+retain the **original publisher URL** and per-item captured media perspective;
+ABOUT is never guessed from publisher country. Records with unpublishable
+rights or unknown publication status cannot acquire a public full text.
+
+The existing synthetic v1 catalog remains supported for development until
+a validated public archive is explicitly committed. A page is fetched only
+when visited, and revisioned URLs force revalidation on data changes. Filters
+and source counts apply only to the **currently loaded page**; global
+server-side querying, daily aggregations, rights-controlled personal full-text
+access and PWA offline caching remain separate follow-up work. Pagination,
+metadata lookup and schema/index consistency are validated client-side.
+
+The Pages workflow runs after a push to `main`, or manually. When a
+reviewed `data/public/items.ndjson` is present in a commit, it generates
+`public/catalog` in the build workspace, then builds and uploads a
+GitHub Pages artifact for the `/NewsAggregator/` subpath. If there is no
+committed dataset, the workflow retains the conspicuously labelled synthetic
+fixture. GitHub Pages configuration and the deployed URL must be confirmed
+on the actual site: CI/build success alone is **not** deployment evidence.
