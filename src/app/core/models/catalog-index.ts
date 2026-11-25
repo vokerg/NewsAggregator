@@ -23,7 +23,9 @@ function isDay(value: unknown): value is string {
     return false;
   }
   const date = new Date(value + "T00:00:00Z");
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  return (
+    !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+  );
 }
 
 export function parseCatalogIndex(value: unknown): CatalogIndex | NewsCatalog {
@@ -33,7 +35,8 @@ export function parseCatalogIndex(value: unknown): CatalogIndex | NewsCatalog {
   if (
     !isRecord(value) ||
     value["schema_version"] !== 2 ||
-    Object.keys(value).sort().join(",") !== "pages,revision,schema_version,total_items" ||
+    Object.keys(value).sort().join(",") !==
+      "pages,revision,schema_version,total_items" ||
     typeof value["revision"] !== "string" ||
     !/^data-[a-f0-9]{24}$/.test(value["revision"]) ||
     !Number.isSafeInteger(value["total_items"]) ||
@@ -85,16 +88,22 @@ export function parseIndexedPage(
   page: CatalogPageDescriptor,
 ): NewsCatalog {
   const catalog = parseCatalog(payload);
-  if (catalog.revision !== index.revision || catalog.items.length !== page.count) {
+  if (
+    catalog.revision !== index.revision ||
+    catalog.items.length !== page.count
+  ) {
     throw new Error("Stale or inconsistent catalog page");
   }
   const ids = catalog.items.map((item) => item.id);
   if (new Set(ids).size !== ids.length) {
     throw new Error("Duplicate catalog IDs");
   }
-  if (catalog.items.some((item) =>
-    (item.published_at ?? item.first_seen_at).slice(0, 10) !== page.day
-  )) {
+  if (
+    catalog.items.some(
+      (item) =>
+        (item.published_at ?? item.first_seen_at).slice(0, 10) !== page.day,
+    )
+  ) {
     throw new Error("Page contains the wrong calendar day");
   }
   return catalog;
