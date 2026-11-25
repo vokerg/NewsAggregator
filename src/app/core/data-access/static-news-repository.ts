@@ -63,6 +63,7 @@ export class StaticNewsRepository implements NewsReadRepository {
               page,
               total_pages: index.pages.length,
               total_items: index.total_items,
+              coverage_status: index.coverage_status ?? "unknown",
             },
           })),
         );
