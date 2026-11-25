@@ -38,13 +38,23 @@ describe("CatalogIndex", () => {
   it("rejects malformed dates, excessive page sizes and inconsistent totals", () => {
     expect(() => parseCatalogIndex({ ...index, total_items: 2 })).toThrow();
     expect(() =>
-      parseCatalogIndex({ ...index, pages: [{ day: "2026-02-30", part: 1, count: 1 }] }),
+      parseCatalogIndex({
+        ...index,
+        pages: [{ day: "2026-02-30", part: 1, count: 1 }],
+      }),
     ).toThrow();
     expect(() =>
-      parseCatalogIndex({ ...index, pages: [{ day: "../secret", part: 1, count: 1 }] }),
+      parseCatalogIndex({
+        ...index,
+        pages: [{ day: "../secret", part: 1, count: 1 }],
+      }),
     ).toThrow();
     expect(() =>
-      parseCatalogIndex({ ...index, pages: [{ day: "2026-11-18", part: 1, count: 101 }], total_items: 101 }),
+      parseCatalogIndex({
+        ...index,
+        pages: [{ day: "2026-11-18", part: 1, count: 101 }],
+        total_items: 101,
+      }),
     ).toThrow();
   });
 
@@ -52,11 +62,18 @@ describe("CatalogIndex", () => {
     const parsed = parseCatalogIndex(index);
     if (parsed.schema_version !== 2) throw new Error("expected v2 index");
     const page = { schema_version: 1, revision: index.revision, items: [item] };
-    expect(() => parseIndexedPage({ ...page, revision: "old" }, parsed, parsed.pages[0])).toThrow();
-    expect(() => parseIndexedPage(
-      { ...page, items: [{ ...item, published_at: "2026-11-19T00:00:00Z" }] },
-      parsed, parsed.pages[0],
-    )).toThrow();
-    expect(() => parseIndexedPage({ ...page, body: "secret" }, parsed, parsed.pages[0])).toThrow();
+    expect(() =>
+      parseIndexedPage({ ...page, revision: "old" }, parsed, parsed.pages[0]),
+    ).toThrow();
+    expect(() =>
+      parseIndexedPage(
+        { ...page, items: [{ ...item, published_at: "2026-11-19T00:00:00Z" }] },
+        parsed,
+        parsed.pages[0],
+      ),
+    ).toThrow();
+    expect(() =>
+      parseIndexedPage({ ...page, body: "secret" }, parsed, parsed.pages[0]),
+    ).toThrow();
   });
 });
