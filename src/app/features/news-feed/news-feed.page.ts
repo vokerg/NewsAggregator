@@ -27,7 +27,12 @@ type FeedState =
       kind: "ready";
       revision: string;
       items: readonly NewsItem[];
-      pageInfo?: { page: number; total_pages: number; total_items: number };
+      pageInfo?: {
+        page: number;
+        total_pages: number;
+        total_items: number;
+        coverage_status?: "unknown" | "idle" | "ok" | "partial" | "failed";
+      };
     }
   | { kind: "error" };
 
