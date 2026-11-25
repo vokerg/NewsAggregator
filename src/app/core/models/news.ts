@@ -31,6 +31,7 @@ export interface NewsCatalog {
     readonly page: number;
     readonly total_pages: number;
     readonly total_items: number;
+    readonly coverage_status?: "unknown" | "idle" | "ok" | "partial" | "failed";
   };
 }
 
