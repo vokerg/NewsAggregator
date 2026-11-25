@@ -8,7 +8,7 @@ import {
 } from "@angular/core";
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
-import { map } from "rxjs";
+import { distinctUntilChanged, map } from "rxjs";
 import { NewsItem } from "../../core/models/news";
 import { NEWS_READ_REPOSITORY } from "../../core/data-access/news-read-repository";
 import {
@@ -23,7 +23,7 @@ import { NewsCard } from "./news-card";
 
 type FeedState =
   | { kind: "loading" }
-  | { kind: "ready"; revision: string; items: readonly NewsItem[] }
+  | { kind: "ready"; revision: string; items: readonly NewsItem[]; pageInfo?: { page: number; total_pages: number; total_items: number } }
   | { kind: "error" };
 
 @Component({
@@ -40,6 +40,7 @@ export class NewsFeedPage {
   private readonly router = inject(Router);
 
   readonly state = signal<FeedState>({ kind: "loading" });
+  readonly page = signal(0);
   readonly filters = toSignal(
     this.route.queryParamMap.pipe(map(readFeedFilters)),
     { initialValue: readFeedFilters(this.route.snapshot.queryParamMap) },
@@ -60,7 +61,25 @@ export class NewsFeedPage {
   readonly count = computed(() => this.visibleItems().length);
 
   constructor() {
-    this.reload();
+    this.route.queryParamMap.pipe(
+      map((params) => {
+        const raw = params.get("catalogPage") ?? "1";
+        return /^[1-9][0-9]{0,3}$/.test(raw) ? Math.min(Number(raw), 2000) - 1 : 0;
+      }),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe((page) => {
+      this.page.set(page);
+      this.reload();
+    });
+  }
+
+  changePage(page: number): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { catalogPage: page === 0 ? null : String(page + 1) },
+      queryParamsHandling: "merge",
+    });
   }
 
   updateFilters(next: FeedFilters): void {
@@ -76,7 +95,7 @@ export class NewsFeedPage {
   reload(): void {
     this.state.set({ kind: "loading" });
     this.repository
-      .loadCatalog()
+      .loadCatalog(this.page())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (catalog) =>
@@ -84,6 +103,7 @@ export class NewsFeedPage {
             kind: "ready",
             revision: catalog.revision,
             items: catalog.items,
+            pageInfo: catalog.page_info,
           }),
         error: () => this.state.set({ kind: "error" }),
       });
