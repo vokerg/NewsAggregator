@@ -27,7 +27,11 @@ jobs:
         shell: bash
         run: |
           if test -f data/public/items.ndjson; then
-            python -m newsagg.publish --archive data/public/items.ndjson --registry config/sources.json --output public/catalog
+            status=()
+            if test -f data/public/status.json; then
+              status=(--status data/public/status.json)
+            fi
+            python -m newsagg.publish --archive data/public/items.ndjson --registry config/sources.json "${status[@]}" --output public/catalog
           else
             echo "No committed public dataset; retaining explicitly labelled synthetic demo."
           fi
