@@ -11,6 +11,7 @@ export interface CatalogIndex {
   readonly schema_version: 2;
   readonly revision: string;
   readonly total_items: number;
+  readonly coverage_status?: "unknown" | "idle" | "ok" | "partial" | "failed";
   readonly pages: readonly CatalogPageDescriptor[];
 }
 
@@ -35,8 +36,12 @@ export function parseCatalogIndex(value: unknown): CatalogIndex | NewsCatalog {
   if (
     !isRecord(value) ||
     value["schema_version"] !== 2 ||
-    Object.keys(value).sort().join(",") !==
-      "pages,revision,schema_version,total_items" ||
+    ![
+      "pages,revision,schema_version,total_items",
+      "coverage_status,pages,revision,schema_version,total_items",
+    ].includes(Object.keys(value).sort().join(",")) ||
+    (value["coverage_status"] !== undefined &&
+      !["unknown", "idle", "ok", "partial", "failed"].includes(value["coverage_status"] as string)) ||
     typeof value["revision"] !== "string" ||
     !/^data-[a-f0-9]{24}$/.test(value["revision"]) ||
     !Number.isSafeInteger(value["total_items"]) ||
