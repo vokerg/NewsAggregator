@@ -62,8 +62,8 @@ export class StaticNewsRepository implements NewsReadRepository {
     );
   }
 
-  private loadBody(item: NewsItem, revision: string): Observable<NewsArticle> {
-    const url = this.asset(`items/${item.id}.json?rev=${revision}`);
+  private loadBody(item: NewsItem, revision: string, legacy = false): Observable<NewsArticle> {
+    const url = this.asset(`items/${item.id}.json${legacy ? "" : `?rev=${revision}`}`);
     return this.http.get<unknown>(url).pipe(
       map((value): NewsArticle => {
         const document = parseArticleDocument(value, item.id);
@@ -88,7 +88,7 @@ export class StaticNewsRepository implements NewsReadRepository {
           const item = index.items.find((candidate) => candidate.id === id);
           if (!item) return of(null);
           // Legacy synthetic v1 contract: preserve its exact detail URL.
-          return this.loadBody(item, index.revision);
+          return this.loadBody(item, index.revision, true);
         }
         // Metadata for older pages is addressable by stable ID, without
         // downloading all historical partitions into the browser.
