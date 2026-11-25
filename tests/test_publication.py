@@ -110,6 +110,34 @@ class PublisherTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             publish(self.archive, REGISTRY, self.output)
 
+
+    def test_verified_partial_coverage_and_mismatched_status(self):
+        self.write([self.row(7)])
+        status_path = self.archive.parent / "status.json"
+        status = {
+            "schema_version": 1,
+            "run_at": "2026-11-19T10:00:00Z",
+            "timezone": "Europe/Copenhagen",
+            "status": "partial",
+            "configured_count": 2,
+            "enabled_count": 2,
+            "total_item_count": 1,
+            "sources": {
+                "example-rss": {"status": "partial", "discovered": 1,
+                                "extracted": 0, "skipped": 1, "error_code": "bad_item"},
+                "example-web": {"status": "idle", "discovered": 0,
+                                "extracted": 0, "skipped": 0, "error_code": None},
+            },
+        }
+        status_path.write_text(json.dumps(status), encoding="utf-8")
+        result = publish(self.archive, REGISTRY, self.output, status=status_path)
+        self.assertEqual(result["coverage_status"], "partial")
+        status["total_item_count"] = 2
+        status_path.write_text(json.dumps(status), encoding="utf-8")
+        with self.assertRaises(ValidationError):
+            publish(self.archive, REGISTRY, self.output, status=status_path)
+        self.assertEqual(self.load(self.output / "manifest.json")["coverage_status"], "partial")
+
     def test_empty_archive_is_explicit_not_fixture_fallback(self):
         self.write([])
         result = publish(self.archive, REGISTRY, self.output)
