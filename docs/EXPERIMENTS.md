@@ -94,3 +94,8 @@ data-revision publishing from a real collection, GitHub Pages configuration
 or serving URL, live source accessibility, mobile-device or offline/PWA cache
 freshness. Source-completeness measurements belong to source onboarding.
 A passing local build is not a claim that a deployed site updated.
+
+Additional exporter regressions reject cross-publisher links even when the
+item hash is internally consistent, mismatched collector coverage totals, and
+unrecognized status claims. The manifest shows `unknown` if no matching
+status is supplied.
