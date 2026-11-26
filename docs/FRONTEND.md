@@ -146,8 +146,7 @@ publisher replaces the fixture with a v2 index and date-partitioned v1-format
 pages (100 items maximum). The repository validates the index, page dates,
 revision and per-item source metadata, and makes one page available at a time
 through `loadCatalog(page)`. `?catalogPage=N` preserves navigation through
-reloads while retaining other filters; filters apply only to the loaded
-partition, not to all stored articles. Metadata lookup by safe stable ID allows
+reloads while retaining other filters; filters apply across all indexed articles. Metadata lookup by safe stable ID allows
 direct details for older items without querying every page.
 
 The public body is always marked unavailable for collector-derived items,
@@ -156,3 +155,19 @@ projections, not authenticated licensed text. The Pages workflow builds for
 `/NewsAggregator/` and uses hash links; real Pages/deep-link deployment,
 offline cache freshness and complete on-device accessibility checks are still
 external verification tasks.
+
+### Review corrections (issue #4)
+The revision includes collection coverage and the format/page-size policy. The
+compact `catalog/search.json` index contains only stable IDs, timestamps and
+classification/source fields (no titles, publisher URLs or body text). It is
+bounded by the archive limit and supports archive-wide facets, source counts,
+date filtering and sorting. Only partitions containing the current 100 query
+results are fetched (up to six concurrent requests); each selected record is
+checked against the same revision's discovery row. The v2 reader derives its
+unavailable-body state from revision-validated metadata, not a separate cached
+body file. The exporter rejects invalid reader metadata and ambiguous encoded
+credential fragments. The release workflow builds and validates generated v2
+fixtures and the actual release catalog with the browser parsers, then gates
+main-only upload/deployment on successful tests and artifact validation.
+The compact index is downloaded as a single bounded file, not an unbounded raw
+archive; further index sharding can be evaluated as the archive grows.

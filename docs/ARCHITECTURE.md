@@ -167,10 +167,9 @@ rights or unknown publication status cannot acquire a public full text.
 
 The existing synthetic v1 catalog remains supported for development until
 a validated public archive is explicitly committed. A page is fetched only
-when visited, and revisioned URLs force revalidation on data changes. Filters
-and source counts apply only to the **currently loaded page**; global
-server-side querying, daily aggregations, rights-controlled personal full-text
-access and PWA offline caching remain separate follow-up work. Pagination,
+when visited, and revisioned URLs force revalidation on data changes. Filters and source counts apply to the archive-wide compact discovery index;
+daily aggregations, rights-controlled personal full-text access and PWA offline
+caching remain separate follow-up work. Pagination,
 metadata lookup and schema/index consistency are validated client-side.
 
 The Pages workflow runs after a push to `main`, or manually. When a
@@ -188,3 +187,19 @@ total item count and aggregate state before projecting only a
 is `unknown` (not a claim of completeness); the UI distinguishes unknown,
 partial and failed collection. The producer also enforces the registry
 publisher-host allowlist for original URLs.
+
+### Review corrections (issue #4)
+The revision includes collection coverage and the format/page-size policy. The
+compact `catalog/search.json` index contains only stable IDs, timestamps and
+classification/source fields (no titles, publisher URLs or body text). It is
+bounded by the archive limit and supports archive-wide facets, source counts,
+date filtering and sorting. Only partitions containing the current 100 query
+results are fetched (up to six concurrent requests); each selected record is
+checked against the same revision's discovery row. The v2 reader derives its
+unavailable-body state from revision-validated metadata, not a separate cached
+body file. The exporter rejects invalid reader metadata and ambiguous encoded
+credential fragments. The release workflow builds and validates generated v2
+fixtures and the actual release catalog with the browser parsers, then gates
+main-only upload/deployment on successful tests and artifact validation.
+The compact index is downloaded as a single bounded file, not an unbounded raw
+archive; further index sharding can be evaluated as the archive grows.

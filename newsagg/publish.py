@@ -15,7 +15,7 @@ import shutil
 import sys
 import tempfile
 from uuid import uuid4
-from urllib.parse import urlsplit, unquote, parse_qsl
+from urllib.parse import urlsplit, unquote
 
 from .models import ValidationError, load_registry, parse_timestamp, check_public_text, _has_sensitive_query_name
 from .runtime import ERROR_CODES, SOURCE_STATES, validate_public_item

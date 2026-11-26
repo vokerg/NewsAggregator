@@ -122,7 +122,7 @@ npm run test:ci && npm run build:pages
 The producer emits a schema-v2 versioned manifest, UTC day partitions of up
 to 100 metadata items, direct per-ID metadata and explicit unavailable-body
 documents. The reader lazily requests one page at a time; selected filters
-apply to that page only. The preserved original URL, captured perspective,
+apply to the complete archive discovery index. The preserved original URL, captured perspective,
 language and publisher provenance remain distinct from ABOUT geography.
 
 On `main` pushes, `.github/workflows/pages.yml` builds the Pages artifact
@@ -137,3 +137,19 @@ The publisher validates it and projects only `coverage_status` (unknown if
 absent) so the UI does not imply complete source coverage. Use
 `--status data/public/status.json` for a matching local export; the Pages
 workflow automatically includes it when present.
+
+### Review corrections (issue #4)
+The revision includes collection coverage and the format/page-size policy. The
+compact `catalog/search.json` index contains only stable IDs, timestamps and
+classification/source fields (no titles, publisher URLs or body text). It is
+bounded by the archive limit and supports archive-wide facets, source counts,
+date filtering and sorting. Only partitions containing the current 100 query
+results are fetched (up to six concurrent requests); each selected record is
+checked against the same revision's discovery row. The v2 reader derives its
+unavailable-body state from revision-validated metadata, not a separate cached
+body file. The exporter rejects invalid reader metadata and ambiguous encoded
+credential fragments. The release workflow builds and validates generated v2
+fixtures and the actual release catalog with the browser parsers, then gates
+main-only upload/deployment on successful tests and artifact validation.
+The compact index is downloaded as a single bounded file, not an unbounded raw
+archive; further index sharding can be evaluated as the archive grows.
