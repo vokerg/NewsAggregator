@@ -26,7 +26,42 @@
     [options]="options()"
     (filtersChanged)="updateFilters($event)"
   />
-  @if (feed.items.length === 0) {
+  @if (feed.pageInfo; as paging) {
+  <nav aria-label="Catalog pages" class="catalog-pages">
+    <button
+      type="button"
+      [disabled]="paging.page === 0"
+      (click)="changePage(paging.page - 1)"
+    >
+      Previous
+    </button>
+    <span
+      >Page {{ paging.total_pages ? paging.page + 1 : 0 }} of {{
+      paging.total_pages }} · {{ paging.total_items }} archived articles</span
+    >
+    <button
+      type="button"
+      [disabled]="paging.page >= paging.total_pages - 1"
+      (click)="changePage(paging.page + 1)"
+    >
+      Next
+    </button>
+  </nav>
+  <p class="catalog-scope">
+    Filters and sorting apply to the complete indexed archive.
+  </p>
+  @if (paging.coverage_status === 'unknown') {
+  <p role="status" class="catalog-scope">
+    Collection coverage has not been verified for this revision.
+  </p>
+  } @else if (paging.coverage_status === 'partial' || paging.coverage_status ===
+  'failed') {
+  <p role="alert" class="catalog-scope">
+    The last collection reported {{ paging.coverage_status }} coverage; some
+    items may be missing.
+  </p>
+  } } @if (feed.items.length === 0 && (!feed.pageInfo ||
+  feed.pageInfo.total_items === 0)) {
   <div class="status-panel" role="status">
     <h2>No articles yet</h2>
     <p>
@@ -36,8 +71,8 @@
   </div>
   } @else {
   <p class="result-count" role="status" aria-live="polite">
-    {{ count() }} {{ count() === 1 ? 'article' : 'articles' }} of {{
-    feed.items.length }} total
+    {{ count() }} {{ count() === 1 ? 'article' : 'articles' }} on this page of
+    {{ feed.pageInfo?.total_matching ?? feed.items.length }} matching
   </p>
   @if (filters().from && filters().to && filters().from > filters().to) {
   <p role="alert">The From date is later than the To date.</p>

@@ -22,10 +22,36 @@ export interface NewsItem {
     | "not_requested";
 }
 
+/** Compact, archive-wide discovery metadata, never rendered as an article. */
+export type DiscoveryItem = Pick<
+  NewsItem,
+  | "id"
+  | "source_id"
+  | "source_name"
+  | "published_at"
+  | "first_seen_at"
+  | "perspective_ids"
+  | "about_country_codes"
+  | "language"
+  | "publisher_country"
+  | "editorial_labels"
+  | "tags"
+>;
+
 export interface NewsCatalog {
   readonly schema_version: 1;
   readonly revision: string;
   readonly items: readonly NewsItem[];
+  /** Archive-wide discovery rows, only for the partitioned format. */
+  readonly discovery?: readonly DiscoveryItem[];
+  /** Present for v2 query results. */
+  readonly page_info?: {
+    readonly page: number;
+    readonly total_pages: number;
+    readonly total_items: number;
+    readonly total_matching?: number;
+    readonly coverage_status?: "unknown" | "idle" | "ok" | "partial" | "failed";
+  };
 }
 
 /**

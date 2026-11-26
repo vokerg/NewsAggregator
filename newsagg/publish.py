@@ -1,0 +1,272 @@
+"""Fail-closed, deterministic metadata-only static read-model publisher.
+
+Input is the collector's *public* NDJSON archive, never its local research tree.
+No network access, no article body capture, no automatic GitHub writes.
+"""
+from __future__ import annotations
+
+import argparse
+from collections import defaultdict
+import hashlib
+import json
+from pathlib import Path
+import re
+import shutil
+import sys
+import tempfile
+from uuid import uuid4
+from urllib.parse import urlsplit, unquote
+
+from .models import ValidationError, load_registry, parse_timestamp, check_public_text, _has_sensitive_query_name
+from .runtime import ERROR_CODES, SOURCE_STATES, validate_public_item
+
+PAGE_SIZE = 100
+MAX_ITEMS = 100_000
+MAX_PAGES = 2_000
+SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
+
+
+def _json(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
+
+
+def _public_item(row: dict, sources: dict) -> dict:
+    validate_public_item(row)
+    sid = row["source_id"]
+    if sid not in sources:
+        raise ValidationError("item source missing from registry")
+    source = sources[sid]
+    if source.rights_profile == "local_only":
+        raise ValidationError("local-only source cannot be published")
+    host = urlsplit(row["original_url"]).hostname
+    if not any(host == allowed or host.endswith("." + allowed)
+               for allowed in source.allowed_hosts):
+        raise ValidationError("public article URL is outside its publisher allowlist")
+    if not SAFE_ID.fullmatch(row["item_id"]):
+        raise ValidationError("unsafe item ID")
+    # Historical perspective is captured on the item; never recalculate it
+    # from current source configuration or the event's country.
+    item = {
+        "id": row["item_id"],
+        "title": row["headline"],
+        "source_id": sid,
+        "source_name": source.display_name,
+        "original_url": row["original_url"],
+        "published_at": row["published_at"],
+        "first_seen_at": row["first_seen_at"],
+        "perspective_ids": row["perspective_ids_at_capture"],
+        "about_country_codes": row["about_country_codes"],
+        "language": row["language"],
+        "editorial_labels": row["editorial_labels_at_capture"],
+        "extraction_status": {
+            "extracted": "extracted",
+            "failed": "failed",
+            "unavailable": "unavailable",
+            "not_requested": "not_requested",
+        }[row["body_extraction_status"]],
+    }
+    if row["publisher_country"] is not None:
+        item["publisher_country"] = row["publisher_country"]
+    # Match the reader's public schema, including UTF-16 length bounds.
+    def text(value: str, maximum: int) -> None:
+        if (not isinstance(value, str) or not value or value.strip() != value
+                or len(value.encode("utf-16-le")) // 2 > maximum
+                or any(ord(c) == 127 for c in value)):
+            raise ValidationError("invalid reader text")
+        check_public_text(value, maximum)
+    for field, maximum in (("id", 128), ("source_id", 128), ("source_name", 120),
+                           ("title", 500), ("original_url", 2048)):
+        text(item[field], maximum)
+    if not re.fullmatch(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*", item["language"]):
+        raise ValidationError("invalid reader language")
+    if "publisher_country" in item and not re.fullmatch(r"[A-Z]{2}", item["publisher_country"]):
+        raise ValidationError("invalid reader country")
+    for field in ("perspective_ids", "about_country_codes", "editorial_labels"):
+        values = item[field]
+        if len(values) > 50 or len(set(values)) != len(values):
+            raise ValidationError("invalid reader classification array")
+        for value in values:
+            text(value, 128)
+            if value == "~unknown":
+                raise ValidationError("reserved filter value")
+    original = item["original_url"]
+    if any(c.isspace() or c == "\\" for c in original):
+        raise ValidationError("ambiguous public URL")
+    parsed = urlsplit(original)
+    if not re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", parsed.hostname or ""):
+        raise ValidationError("invalid reader hostname")
+    if re.fullmatch(r"\d+(?:\.\d+){3}", parsed.hostname or "") or parsed.hostname.endswith((".localhost", ".local", ".internal")):
+        raise ValidationError("non-publisher hostname")
+    if re.search(r"%(?![0-9a-fA-F]{2})", parsed.fragment):
+        raise ValidationError("malformed URL fragment")
+    fragment = unquote(parsed.fragment, errors="strict")
+    for part in re.split(r"[?&#]", fragment):
+        if "=" in part and _has_sensitive_query_name(part.split("=", 1)[0]):
+            raise ValidationError("credential-bearing URL fragment")
+    return item
+
+
+def _load_rows(path: Path, sources: dict) -> list[dict]:
+    if not path.is_file():
+        raise ValidationError("collector public archive is missing")
+    rows: list[dict] = []
+    seen: set[str] = set()
+    with path.open(encoding="utf-8") as stream:
+        for number, line in enumerate(stream, 1):
+            if number > MAX_ITEMS:
+                raise ValidationError("archive exceeds publisher item bound")
+            if not line.strip():
+                raise ValidationError("blank NDJSON row")
+            row = json.loads(line)
+            item = _public_item(row, sources)
+            if item["id"] in seen:
+                raise ValidationError("duplicate item ID")
+            seen.add(item["id"])
+            rows.append(item)
+    rows.sort(key=lambda item: (item["published_at"] or item["first_seen_at"], item["id"]), reverse=True)
+    return rows
+
+
+def _write(root: Path, path: str, value: object) -> None:
+    destination = root / path
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(_json(value), encoding="utf-8")
+
+
+
+def _coverage(status_path: Path | None, sources: dict, timezone_name: str,
+              item_count: int) -> str:
+    """Project only a verified status enum, never source errors or URLs."""
+    if status_path is None:
+        return "unknown"
+    data = json.loads(status_path.read_text(encoding="utf-8"))
+    expected_keys = {"schema_version", "run_at", "timezone", "status",
+                     "configured_count", "enabled_count", "total_item_count", "sources"}
+    public = {sid: source for sid, source in sources.items() if source.rights_profile != "local_only"}
+    enabled = {sid for sid, source in public.items() if source.enabled}
+    if (not isinstance(data, dict) or set(data) != expected_keys or
+            type(data["schema_version"]) is not int or data["schema_version"] != 1 or
+            data["timezone"] != timezone_name or not isinstance(data["run_at"], str) or
+            parse_timestamp(data["run_at"]) != data["run_at"] or
+            type(data["total_item_count"]) is not int or data["total_item_count"] != item_count or
+            type(data["configured_count"]) is not int or data["configured_count"] != len(public) or
+            type(data["enabled_count"]) is not int or data["enabled_count"] != len(enabled) or
+            data["status"] not in SOURCE_STATES or not isinstance(data["sources"], dict) or
+            set(data["sources"]) != enabled):
+        raise ValidationError("invalid or mismatched collector coverage")
+    statuses = []
+    for row in data["sources"].values():
+        if (not isinstance(row, dict) or
+                set(row) != {"status", "discovered", "extracted", "skipped", "error_code"} or
+                row["status"] not in SOURCE_STATES or
+                row["error_code"] is not None and row["error_code"] not in ERROR_CODES):
+            raise ValidationError("invalid per-source collection status")
+        for key in ("discovered", "extracted", "skipped"):
+            if type(row[key]) is not int or not 0 <= row[key] <= 10_000:
+                raise ValidationError("invalid per-source collection count")
+        statuses.append(row["status"])
+    attempted = [state for state in statuses if state != "idle"]
+    derived = ("idle" if not attempted else "ok" if all(s == "ok" for s in attempted)
+               else "failed" if all(s == "failed" for s in attempted) else "partial")
+    if data["status"] != derived:
+        raise ValidationError("collector coverage conflicts with source states")
+    return derived
+
+
+def publish(archive: Path, registry: Path, output: Path, *, status: Path | None = None) -> dict:
+    """Generate a full, independently validated projection or leave output unchanged."""
+    timezone_name, configured = load_registry(registry)
+    sources = {s.source_id: s for s in configured}
+    items = _load_rows(archive, sources)
+    coverage_status = _coverage(status, sources, timezone_name, len(items))
+    by_day: dict[str, list[dict]] = defaultdict(list)
+    for item in items:
+        by_day[(item["published_at"] or item["first_seen_at"])[:10]].append(item)
+    # Revision is content-addressed, not a wall-clock publishing timestamp.
+    payload = _json({"format": 2, "page_size": PAGE_SIZE, "items": items,
+                     "coverage_status": coverage_status}).encode("utf-8")
+    revision = "data-" + hashlib.sha256(payload).hexdigest()[:24]
+    pages: list[dict] = []
+    for day in sorted(by_day, reverse=True):
+        for offset in range(0, len(by_day[day]), PAGE_SIZE):
+            pages.append({"day": day, "part": offset // PAGE_SIZE + 1,
+                          "count": min(PAGE_SIZE, len(by_day[day]) - offset)})
+    if len(pages) > MAX_PAGES:
+        raise ValidationError("archive exceeds maximum page count")
+    manifest = {"schema_version": 2, "revision": revision, "total_items": len(items), "pages": pages,
+                "coverage_status": coverage_status}
+
+    # All files are assembled outside the destination; validation failure
+    # cannot publish a partially projected page or a restricted body.
+    if output.is_symlink():
+        raise ValidationError("unsafe output symlink")
+    output = output.resolve()
+    if (output == Path(output.anchor) or archive.resolve().is_relative_to(output)
+            or registry.resolve().is_relative_to(output)
+            or (status is not None and status.resolve().is_relative_to(output))):
+        raise ValidationError("unsafe output location")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".catalog-stage-", dir=output.parent) as stage:
+        root = Path(stage) / "catalog"
+        root.mkdir()
+        _write(root, "manifest.json", manifest)
+        # Compact discovery index: no headlines, URLs, or article text.
+        search_fields = ("id", "source_id", "source_name", "published_at", "first_seen_at",
+                         "perspective_ids", "about_country_codes", "language", "publisher_country",
+                         "editorial_labels", "tags")
+        search_rows = [{key: item[key] for key in search_fields if key in item} for item in items]
+        _write(root, "search.json", {"schema_version": 2, "revision": revision, "rows": search_rows})
+        for page in pages:
+            day, part = page["day"], page["part"]
+            offset = (part - 1) * PAGE_SIZE
+            _write(root, f"days/{day}/{part}.json",
+                   {"schema_version": 1, "revision": revision,
+                    "items": by_day[day][offset:offset + PAGE_SIZE]})
+        for item in items:
+            _write(root, f"metadata/{item['id']}.json",
+                   {"schema_version": 1, "revision": revision, "items": [item]})
+            # A successfully extracted body is still not licensed for public use.
+            status = item["extraction_status"]
+            reason = ("rights" if status == "extracted" else "failed" if status == "failed"
+                      else "not_extracted" if status == "not_requested" else "unknown")
+            _write(root, f"items/{item['id']}.json",
+                   {"schema_version": 1, "item_id": item["id"],
+                    "body": {"kind": "unavailable", "reason": reason}})
+        if output.exists():
+            # Do not silently wipe an unrelated directory.
+            if not (output / "manifest.json").is_file():
+                raise ValidationError("existing output is not a catalog")
+            backup = output.parent / (".catalog-old-" + uuid4().hex)
+            output.rename(backup)
+            try:
+                root.rename(output)
+            except Exception:
+                backup.rename(output)
+                raise
+            else:
+                shutil.rmtree(backup)
+        else:
+            root.rename(output)
+    return manifest
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Offline collector -> public catalog v2")
+    parser.add_argument("--archive", type=Path, required=True,
+                        help="public/items.ndjson, never research/items.ndjson")
+    parser.add_argument("--registry", type=Path, default=Path("config/sources.json"))
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--status", type=Path, help="matching collector public/status.json")
+    args = parser.parse_args(argv)
+    try:
+        result = publish(args.archive, args.registry, args.output, status=args.status)
+    except (ValueError, OSError, TypeError, KeyError, json.JSONDecodeError) as exc:
+        print(f"publish rejected: {type(exc).__name__}", file=sys.stderr)
+        return 1
+    print(json.dumps({"revision": result["revision"], "items": result["total_items"],
+                      "pages": len(result["pages"])}, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

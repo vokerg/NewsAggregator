@@ -1,0 +1,92 @@
+name: Validated static release
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: static-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.15.0'
+      - name: Validate collector and frontend
+        run: |
+          python -m compileall -q newsagg tests
+          python -m unittest discover -s tests -v
+          npm ci --no-audit --no-fund
+          npm audit --omit=dev --audit-level=high
+          npm run format:check
+          npm run lint
+          npm run test:ci
+      - name: Exercise real producer-to-browser v2 contract
+        shell: bash
+        run: |
+          python -m newsagg --registry tests/fixtures/registry.json --fixture-map tests/fixtures/fixtures-map.json --output "$RUNNER_TEMP/collection" --at 2026-11-18T08:00:00Z
+          python -m newsagg.publish --archive "$RUNNER_TEMP/collection/public/items.ndjson" --registry tests/fixtures/registry.json --status "$RUNNER_TEMP/collection/public/status.json" --output "$RUNNER_TEMP/catalog-v2"
+          node scripts/validate-catalog.cjs "$RUNNER_TEMP/catalog-v2"
+          mv public/catalog "$RUNNER_TEMP/catalog-demo"
+          cp -a "$RUNNER_TEMP/catalog-v2" public/catalog
+          npm run build:pages
+          node scripts/validate-catalog.cjs dist/news-aggregator/browser/catalog
+          diff -r public/catalog dist/news-aggregator/browser/catalog
+          grep -q '<base href="/NewsAggregator/">' dist/news-aggregator/browser/index.html
+          rm -r public/catalog
+          mv "$RUNNER_TEMP/catalog-demo" public/catalog
+      - name: Generate and validate release dataset
+        shell: bash
+        run: |
+          if test -f data/public/items.ndjson; then
+            status=()
+            if test -f data/public/status.json; then
+              status=(--status data/public/status.json)
+            fi
+            python -m newsagg.publish --archive data/public/items.ndjson --registry config/sources.json "${status[@]}" --output public/catalog
+          else
+            echo "No committed public dataset; using explicitly labelled synthetic demo."
+          fi
+          node scripts/validate-catalog.cjs public/catalog
+          npm run build:pages
+          node scripts/validate-catalog.cjs dist/news-aggregator/browser/catalog
+          diff -r public/catalog dist/news-aggregator/browser/catalog
+          grep -q '<base href="/NewsAggregator/">' dist/news-aggregator/browser/index.html
+      - uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: dist/news-aggregator/browser
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 10
+    steps:
+      - name: Publish validated GitHub Pages artifact
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -47,7 +47,7 @@ describe("SourceBrowserPage", () => {
         {
           provide: NEWS_READ_REPOSITORY,
           useValue: {
-            loadCatalog: () =>
+            loadDiscovery: () =>
               of({
                 schema_version: 1,
                 revision: "fixture-sources",

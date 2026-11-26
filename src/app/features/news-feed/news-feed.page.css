@@ -83,3 +83,31 @@ h1 {
   background: var(--color-surface);
   font-weight: 700;
 }
+
+.catalog-pages {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1.2rem 0 0.4rem;
+}
+
+.catalog-pages button {
+  min-height: 2.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.catalog-pages button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.catalog-scope {
+  color: var(--color-muted);
+  font-size: 0.875rem;
+}

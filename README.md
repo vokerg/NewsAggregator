@@ -102,3 +102,54 @@ The Angular reader supports combinable, shareable URL filters on the synthetic c
 The source browser at the hash route **/#/sources** lists publishers with items in the current public catalog and links to filtered feeds; it does not represent the full source registry or live ingestion. A GitHub Pages feed deep-link looks like **/NewsAggregator/#/news?view=dk-media&about=UA**. The URL preserves combinations and clearing selections removes their query parameters. The existing v1 catalog accepts optional validated language, publisher_country and editorial_labels metadata in addition to tags.
 
 These remain **synthetic demonstration records**, not verified publisher classifications, a deployed website or a complete historical catalog. Source browsing and filtering operate only on the records in the current bounded read model; issue #4 owns partitioned/complete read-model publication.
+
+## Commit-driven public catalog (issue #4)
+
+The browser reads bounded JSON data, not the collector's NDJSON archive.
+To **manually review and publish a dataset** from a local collector output,
+place the reviewed metadata-only `.local/newsagg/public/items.ndjson` at
+`data/public/items.ndjson` and commit it. Never commit `research/`,
+`state.json`, publisher body text, raw capture, cookies or API keys.
+The offline publisher is fail-closed and replaces only the generated catalog:
+
+```bash
+python -m newsagg.publish --archive data/public/items.ndjson \
+  --registry config/sources.json --output public/catalog
+python -m unittest discover -s tests -v
+npm run test:ci && npm run build:pages
+```
+
+The producer emits a schema-v2 versioned manifest, UTC day partitions of up
+to 100 metadata items, direct per-ID metadata and explicit unavailable-body
+documents. The reader lazily requests one page at a time; selected filters
+apply to the complete archive discovery index. The preserved original URL, captured perspective,
+language and publisher provenance remain distinct from ABOUT geography.
+
+On `main` pushes, `.github/workflows/pages.yml` builds the Pages artifact
+from any committed `data/public/items.ndjson`, otherwise preserving the
+clearly labelled synthetic demo. This workflow does **not** collect real
+news or commit publisher data itself. GitHub Pages source settings, the
+deployment run and a live `/NewsAggregator/` URL must be verified separately;
+the presence of a workflow does not establish the site is deployed.
+
+Optional: also commit the matching reviewed `data/public/status.json`.
+The publisher validates it and projects only `coverage_status` (unknown if
+absent) so the UI does not imply complete source coverage. Use
+`--status data/public/status.json` for a matching local export; the Pages
+workflow automatically includes it when present.
+
+### Review corrections (issue #4)
+The revision includes collection coverage and the format/page-size policy. The
+compact `catalog/search.json` index contains only stable IDs, timestamps and
+classification/source fields (no titles, publisher URLs or body text). It is
+bounded by the archive limit and supports archive-wide facets, source counts,
+date filtering and sorting. Only partitions containing the current 100 query
+results are fetched (up to six concurrent requests); each selected record is
+checked against the same revision's discovery row. The v2 reader derives its
+unavailable-body state from revision-validated metadata, not a separate cached
+body file. The exporter rejects invalid reader metadata and ambiguous encoded
+credential fragments. The release workflow builds and validates generated v2
+fixtures and the actual release catalog with the browser parsers, then gates
+main-only upload/deployment on successful tests and artifact validation.
+The compact index is downloaded as a single bounded file, not an unbounded raw
+archive; further index sharding can be evaluated as the archive grows.

@@ -14,15 +14,12 @@ describe("NewsFiltersPanel", () => {
         [
           {
             id: "example",
-            title: "Example",
             source_id: "dr",
             source_name: "DR",
-            original_url: "https://example.org/article",
             published_at: null,
             first_seen_at: "2026-11-18T08:00:00Z",
             perspective_ids: ["dk-media"],
             about_country_codes: ["UA"],
-            extraction_status: "unavailable",
           },
         ],
         DEFAULT_FEED_FILTERS,

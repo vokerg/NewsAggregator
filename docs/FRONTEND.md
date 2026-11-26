@@ -137,3 +137,37 @@ The [pre-merge browser review](https://github.com/vokerg/NewsAggregator/actions/
 Pure filtering and query-parameter helpers power a small standalone Angular panel and lazy-loaded, catalog-derived source browser. The filter state is derived from the route's query parameters via Signals; bookmarks and browser back/forward preserve independent ABOUT and VIEW FROM selections. Every facet intersects the other selected facets, and unknown/unclassified source metadata is represented explicitly instead of inferred. No editorial label represents a factual truth verdict.
 
 Date boundaries are inclusive UTC days using normalized zoned publication timestamps, with first-seen fallback when publication time is unknown. This release introduces no runtime API, publisher collector, static publisher registry, PWA, deployment or public-article rights claims. Test evidence lives on the issue #3 PR; physical-device accessibility checks and complete historical search require later validation.
+
+## Read-model v2 pagination (#4, 2026-11-25)
+
+Angular continues to consume the v1 bounded synthetic catalog for tests.
+When the build includes a committed collector public archive, the static
+publisher replaces the fixture with a v2 index and date-partitioned v1-format
+pages (100 items maximum). The repository validates the index, page dates,
+revision and per-item source metadata, and makes one page available at a time
+through `loadCatalog(page)`. `?catalogPage=N` preserves navigation through
+reloads while retaining other filters; filters apply across all indexed articles. Metadata lookup by safe stable ID allows
+direct details for older items without querying every page.
+
+The public body is always marked unavailable for collector-derived items,
+irrespective of extraction success. These generated files are metadata
+projections, not authenticated licensed text. The Pages workflow builds for
+`/NewsAggregator/` and uses hash links; real Pages/deep-link deployment,
+offline cache freshness and complete on-device accessibility checks are still
+external verification tasks.
+
+### Review corrections (issue #4)
+The revision includes collection coverage and the format/page-size policy. The
+compact `catalog/search.json` index contains only stable IDs, timestamps and
+classification/source fields (no titles, publisher URLs or body text). It is
+bounded by the archive limit and supports archive-wide facets, source counts,
+date filtering and sorting. Only partitions containing the current 100 query
+results are fetched (up to six concurrent requests); each selected record is
+checked against the same revision's discovery row. The v2 reader derives its
+unavailable-body state from revision-validated metadata, not a separate cached
+body file. The exporter rejects invalid reader metadata and ambiguous encoded
+credential fragments. The release workflow builds and validates generated v2
+fixtures and the actual release catalog with the browser parsers, then gates
+main-only upload/deployment on successful tests and artifact validation.
+The compact index is downloaded as a single bounded file, not an unbounded raw
+archive; further index sharding can be evaluated as the archive grows.

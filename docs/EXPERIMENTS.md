@@ -69,3 +69,49 @@ Implemented a standalone Python 3.11+ standard-library ingestion foundation, wit
 ### 2026-11-22 — PR #13 self-review
 
 Found and fixed HTML ignored-element nesting, optional body parser exception isolation, common query/fragment credential leakage, RSS 1.0 namespace handling and relative RSS/Atom links, publication dates from body-unavailable pages, and publication-time upgrades on retry. Added seven regression tests (25 → 32); the `offline-collector` job in GitHub Actions [run 44990763618](https://github.com/vokerg/NewsAggregator/actions/runs/44990763618) passed all 32 on Python 3.12 and repeated offline ingestion with 4 stable IDs. No real publisher network checks or source onboarding occurred. Details and limitations: [COLLECTION.md](COLLECTION.md).
+
+## 2026-11-25 — static catalog v2 implementation evidence (#4 PR)
+
+**Decision:** use a deterministic offline producer from strictly validated
+public collector NDJSON, 100-item UTC date partitions, a bounded index and
+individually addressable metadata files. Revisions are content-hashed rather
+than derived from the publication job's wall clock. The browser never parses
+the entire NDJSON archive and keeps its read-only data-access abstraction.
+The generator deliberately refuses to release article bodies (including
+`body_extraction_status=extracted`), unsupported item keys or local-only rows.
+
+**Verification plan:** run `python -m unittest discover -s tests -v`,
+`npm run format:check`, `npm run lint`, `npm run test:ci`,
+`npm run build:pages`; CI additionally runs the offline fixture collector
+twice, generates v2 assets and checks all generated article-body documents
+are rights-unavailable. Tests exercise deterministic revision, stable URL,
+capture-time perspective, 100-record boundaries, UTC midnight, rejection of
+duplicates/secrets/unexpected fields, stale page/index revisions and older-ID
+direct lookup.
+
+**Not verified by implementation alone:** real committed publisher dataset,
+data-revision publishing from a real collection, GitHub Pages configuration
+or serving URL, live source accessibility, mobile-device or offline/PWA cache
+freshness. Source-completeness measurements belong to source onboarding.
+A passing local build is not a claim that a deployed site updated.
+
+Additional exporter regressions reject cross-publisher links even when the
+item hash is internally consistent, mismatched collector coverage totals, and
+unrecognized status claims. The manifest shows `unknown` if no matching
+status is supplied.
+
+### Review corrections (issue #4)
+The revision includes collection coverage and the format/page-size policy. The
+compact `catalog/search.json` index contains only stable IDs, timestamps and
+classification/source fields (no titles, publisher URLs or body text). It is
+bounded by the archive limit and supports archive-wide facets, source counts,
+date filtering and sorting. Only partitions containing the current 100 query
+results are fetched (up to six concurrent requests); each selected record is
+checked against the same revision's discovery row. The v2 reader derives its
+unavailable-body state from revision-validated metadata, not a separate cached
+body file. The exporter rejects invalid reader metadata and ambiguous encoded
+credential fragments. The release workflow builds and validates generated v2
+fixtures and the actual release catalog with the browser parsers, then gates
+main-only upload/deployment on successful tests and artifact validation.
+The compact index is downloaded as a single bounded file, not an unbounded raw
+archive; further index sharding can be evaluated as the archive grows.

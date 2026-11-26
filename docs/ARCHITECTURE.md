@@ -142,3 +142,64 @@ NDJSON рассматривается как прозрачный экспорт
 6. Каждый item и summary evidence ID ведут к проверенному original_url.
 7. Недоступность body и неполный crawl видимы как partial.
 8. Публичный read model не раскрывает секреты или неразрешённый full text.
+
+## 2026-11-25 — issue #4: commit-driven public read-model contract (PR)
+
+The opt-in collector's `public/items.ndjson` is metadata-only, and is **not** loaded
+by the browser. The offline, standard-library `python -m newsagg.publish`
+step validates every public archive record against `validate_public_item`,
+the configured source registry and source-rights policy. All rows remain in
+the collector archive; this step only emits public display projections. Neither
+raw HTML, publisher article bodies, body lengths, canonical URLs, local-only
+research items nor credentials are emitted into the static read model.
+
+The read model is `catalog/manifest.json` schema **v2**: a content-hash
+`revision`, `total_items`, and ordered bounded page descriptors
+`{day, part, count}`. Pages are `catalog/days/YYYY-MM-DD/N.json`, max 100
+records each, with the strict v1 metadata item schema. Dates are UTC
+publication dates, falling back to UTC first-seen date if unknown.
+`catalog/metadata/<safe-id>.json` supports old-item deep links without
+loading the whole archive, and `catalog/items/<safe-id>.json` explicitly
+returns unavailable public body for collector output. All per-item links
+retain the **original publisher URL** and per-item captured media perspective;
+ABOUT is never guessed from publisher country. Records with unpublishable
+rights or unknown publication status cannot acquire a public full text.
+
+The existing synthetic v1 catalog remains supported for development until
+a validated public archive is explicitly committed. A page is fetched only
+when visited, and revisioned URLs force revalidation on data changes. Filters and source counts apply to the archive-wide compact discovery index;
+daily aggregations, rights-controlled personal full-text access and PWA offline
+caching remain separate follow-up work. Pagination,
+metadata lookup and schema/index consistency are validated client-side.
+
+The Pages workflow runs after a push to `main`, or manually. When a
+reviewed `data/public/items.ndjson` is present in a commit, it generates
+`public/catalog` in the build workspace, then builds and uploads a
+GitHub Pages artifact for the `/NewsAggregator/` subpath. If there is no
+committed dataset, the workflow retains the conspicuously labelled synthetic
+fixture. GitHub Pages configuration and the deployed URL must be confirmed
+on the actual site: CI/build success alone is **not** deployment evidence.
+
+When a matching committed collector `status.json` accompanies the archive, the
+publisher validates the status version, timestamps, source-ID set, row counts,
+total item count and aggregate state before projecting only a
+`coverage_status` enum into the manifest. Without verified status this field
+is `unknown` (not a claim of completeness); the UI distinguishes unknown,
+partial and failed collection. The producer also enforces the registry
+publisher-host allowlist for original URLs.
+
+### Review corrections (issue #4)
+The revision includes collection coverage and the format/page-size policy. The
+compact `catalog/search.json` index contains only stable IDs, timestamps and
+classification/source fields (no titles, publisher URLs or body text). It is
+bounded by the archive limit and supports archive-wide facets, source counts,
+date filtering and sorting. Only partitions containing the current 100 query
+results are fetched (up to six concurrent requests); each selected record is
+checked against the same revision's discovery row. The v2 reader derives its
+unavailable-body state from revision-validated metadata, not a separate cached
+body file. The exporter rejects invalid reader metadata and ambiguous encoded
+credential fragments. The release workflow builds and validates generated v2
+fixtures and the actual release catalog with the browser parsers, then gates
+main-only upload/deployment on successful tests and artifact validation.
+The compact index is downloaded as a single bounded file, not an unbounded raw
+archive; further index sharding can be evaluated as the archive grows.
