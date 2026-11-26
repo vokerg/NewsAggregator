@@ -6,6 +6,7 @@ import {
 } from "@angular/common/http/testing";
 import { TestBed } from "@angular/core/testing";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_FEED_FILTERS } from "../models/news-filtering";
 import { StaticNewsRepository } from "./static-news-repository";
 
 const item = {
@@ -219,21 +220,49 @@ describe("StaticNewsRepository", () => {
         `https://example.org/NewsAggregator/catalog/metadata/${item.id}.json?rev=${revision}`,
       )
       .flush({ schema_version: 1, revision, items: [item] });
-    http
-      .expectOne(
-        `https://example.org/NewsAggregator/catalog/items/${item.id}.json?rev=${revision}`,
-      )
-      .flush({
-        schema_version: 1,
-        item_id: item.id,
-        body: { kind: "unavailable", reason: "rights" },
-      });
+    http.expectNone((request) => request.url.includes("/catalog/items/"));
     http.verify();
     expect(result).toEqual({
       item,
       revision,
       body: { kind: "unavailable", reason: "rights" },
     });
+  });
+
+  it("queries older partitions by combined facets without loading irrelevant pages", () => {
+    const { repository, http } = setup();
+    const revision = "data-1234567890abcdef12345678";
+    const older = { ...item, id: "older", source_id: "older-source", source_name: "Older publisher", first_seen_at: "2026-11-17T08:00:00Z" };
+    const compact = ({ id, source_id, source_name, published_at, first_seen_at, perspective_ids, about_country_codes, tags }: typeof item) =>
+      ({ id, source_id, source_name, published_at, first_seen_at, perspective_ids, about_country_codes, tags });
+    let result: unknown;
+    repository.loadCatalog(0, { ...DEFAULT_FEED_FILTERS, source: "older-source", about: "UA" }).subscribe(catalog => result = catalog);
+    http.expectOne("https://example.org/NewsAggregator/catalog/manifest.json").flush({
+      schema_version: 2, revision, total_items: 2, pages: [
+        { day: "2026-11-18", part: 1, count: 1 }, { day: "2026-11-17", part: 1, count: 1 },
+      ],
+    });
+    http.expectOne(`https://example.org/NewsAggregator/catalog/search.json?rev=${revision}`).flush({
+      schema_version: 2, revision, rows: [compact(item), compact(older)],
+    });
+    http.expectOne(`https://example.org/NewsAggregator/catalog/days/2026-11-17/1.json?rev=${revision}`).flush({
+      schema_version: 1, revision, items: [older],
+    });
+    http.verify();
+    expect(result).toMatchObject({ items: [older], discovery: [compact(item), compact(older)], page_info: { total_items: 2, total_matching: 1, total_pages: 1 } });
+  });
+
+  it("retains failed coverage in an empty v2 result", () => {
+    const { repository, http } = setup();
+    const revision = "data-1234567890abcdef12345678";
+    let result: unknown;
+    repository.loadCatalog(0, DEFAULT_FEED_FILTERS).subscribe(catalog => result = catalog);
+    http.expectOne("https://example.org/NewsAggregator/catalog/manifest.json").flush({
+      schema_version: 2, revision, total_items: 0, pages: [], coverage_status: "failed",
+    });
+    http.expectOne(`https://example.org/NewsAggregator/catalog/search.json?rev=${revision}`).flush({ schema_version: 2, revision, rows: [] });
+    http.verify();
+    expect(result).toMatchObject({ items: [], page_info: { total_items: 0, total_pages: 0, coverage_status: "failed" } });
   });
 
   it("refuses a revision mismatch before loading article text", () => {

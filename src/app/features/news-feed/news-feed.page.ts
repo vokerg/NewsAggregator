@@ -9,7 +9,7 @@ import {
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { ActivatedRoute, Router } from "@angular/router";
 import { distinctUntilChanged, map, Subscription } from "rxjs";
-import { NewsItem } from "../../core/models/news";
+import { DiscoveryItem, NewsItem } from "../../core/models/news";
 import { NEWS_READ_REPOSITORY } from "../../core/data-access/news-read-repository";
 import {
   buildFilterOptions,
@@ -27,10 +27,12 @@ type FeedState =
       kind: "ready";
       revision: string;
       items: readonly NewsItem[];
+      discovery?: readonly DiscoveryItem[];
       pageInfo?: {
         page: number;
         total_pages: number;
         total_items: number;
+        total_matching?: number;
         coverage_status?: "unknown" | "idle" | "ok" | "partial" | "failed";
       };
     }
@@ -65,7 +67,7 @@ export class NewsFeedPage {
   readonly options = computed(() => {
     const state = this.state();
     return buildFilterOptions(
-      state.kind === "ready" ? state.items : [],
+      state.kind === "ready" ? (state.discovery ?? state.items) : [],
       this.filters(),
     );
   });
@@ -76,14 +78,13 @@ export class NewsFeedPage {
       .pipe(
         map((params) => {
           const raw = params.get("catalogPage") ?? "1";
-          return /^[1-9][0-9]{0,3}$/.test(raw)
-            ? Math.min(Number(raw), 2000) - 1
-            : 0;
+          const page = /^[1-9][0-9]{0,3}$/.test(raw) ? Math.min(Number(raw), 2000) - 1 : 0;
+          return { page, filters: readFeedFilters(params) };
         }),
-        distinctUntilChanged(),
+        distinctUntilChanged((a, b) => a.page === b.page && JSON.stringify(a.filters) === JSON.stringify(b.filters)),
         takeUntilDestroyed(this.destroyRef),
       )
-      .subscribe((page) => {
+      .subscribe(({ page }) => {
         this.page.set(page);
         this.reload();
       });
@@ -101,7 +102,7 @@ export class NewsFeedPage {
     // Merge keeps unrelated URL parameters; null removes a cleared facet.
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: feedFilterQueryParams(next),
+      queryParams: { ...feedFilterQueryParams(next), catalogPage: null },
       queryParamsHandling: "merge",
       replaceUrl: true,
     });
@@ -112,7 +113,7 @@ export class NewsFeedPage {
     this.catalogRequest?.unsubscribe();
     this.state.set({ kind: "loading" });
     this.catalogRequest = this.repository
-      .loadCatalog(this.page())
+      .loadCatalog(this.page(), this.filters())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (catalog) =>
@@ -120,6 +121,7 @@ export class NewsFeedPage {
             kind: "ready",
             revision: catalog.revision,
             items: catalog.items,
+            discovery: catalog.discovery,
             pageInfo: catalog.page_info,
           }),
         error: () => this.state.set({ kind: "error" }),

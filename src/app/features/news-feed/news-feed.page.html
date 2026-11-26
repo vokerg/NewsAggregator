@@ -33,7 +33,7 @@
       [disabled]="paging.page === 0"
       (click)="changePage(paging.page - 1)"
     >
-      Newer
+      Previous
     </button>
     <span
       >Page {{ paging.total_pages ? paging.page + 1 : 0 }} of {{
@@ -44,11 +44,11 @@
       [disabled]="paging.page >= paging.total_pages - 1"
       (click)="changePage(paging.page + 1)"
     >
-      Older
+      Next
     </button>
   </nav>
   <p class="catalog-scope">
-    Filters apply to the current page, not to the complete archive.
+    Filters and sorting apply to the complete indexed archive.
   </p>
   @if (paging.coverage_status === 'unknown') {
   <p role="status" class="catalog-scope">
@@ -60,7 +60,7 @@
     The last collection reported {{ paging.coverage_status }} coverage; some
     items may be missing.
   </p>
-  } } @if (feed.items.length === 0) {
+  } } @if (feed.items.length === 0 && (!feed.pageInfo || feed.pageInfo.total_items === 0)) {
   <div class="status-panel" role="status">
     <h2>No articles yet</h2>
     <p>
@@ -70,8 +70,8 @@
   </div>
   } @else {
   <p class="result-count" role="status" aria-live="polite">
-    {{ count() }} {{ count() === 1 ? 'article' : 'articles' }} of {{
-    feed.items.length }} total
+    {{ count() }} {{ count() === 1 ? 'article' : 'articles' }} on this page of {{
+    feed.pageInfo?.total_matching ?? feed.items.length }} matching
   </p>
   @if (filters().from && filters().to && filters().from > filters().to) {
   <p role="alert">The From date is later than the To date.</p>

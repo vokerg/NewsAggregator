@@ -8,7 +8,7 @@ import {
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { RouterLink } from "@angular/router";
 import { NEWS_READ_REPOSITORY } from "../../core/data-access/news-read-repository";
-import { NewsItem } from "../../core/models/news";
+import { DiscoveryItem } from "../../core/models/news";
 
 export interface CatalogSource {
   readonly id: string;
@@ -19,7 +19,7 @@ export interface CatalogSource {
 
 /** Only sources represented by public catalog items appear here. */
 export function summarizeCatalogSources(
-  items: readonly NewsItem[],
+  items: readonly DiscoveryItem[],
 ): readonly CatalogSource[] {
   const collected = new Map<
     string,
@@ -73,7 +73,7 @@ export class SourceBrowserPage {
   reload(): void {
     this.state.set({ kind: "loading" });
     this.repository
-      .loadCatalog()
+      .loadDiscovery()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (catalog) =>

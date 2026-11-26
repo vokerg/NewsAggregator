@@ -1,15 +1,18 @@
 import { DOCUMENT } from "@angular/common";
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { inject, Injectable } from "@angular/core";
-import { catchError, map, Observable, of, switchMap, throwError } from "rxjs";
+import { catchError, from, map, mergeMap, Observable, of, switchMap, throwError, toArray } from "rxjs";
 import { parseArticleDocument } from "../models/article-parser";
 import { parseCatalog } from "../models/catalog-parser";
 import {
   CatalogIndex,
   parseCatalogIndex,
+  parseDiscovery,
   parseIndexedPage,
+  sameDiscovery,
 } from "../models/catalog-index";
-import { NewsArticle, NewsCatalog, NewsItem } from "../models/news";
+import { DiscoveryItem, NewsArticle, NewsCatalog, NewsItem } from "../models/news";
+import { FeedFilters, filterNews } from "../models/news-filtering";
 import { NewsReadRepository } from "./news-read-repository";
 
 @Injectable({ providedIn: "root" })
@@ -31,12 +34,78 @@ export class StaticNewsRepository implements NewsReadRepository {
       .pipe(map(parseCatalogIndex));
   }
 
-  loadCatalog(page = 0): Observable<NewsCatalog> {
+  private discovery(index: CatalogIndex): Observable<readonly DiscoveryItem[]> {
+    return this.http.get<unknown>(this.asset(`search.json?rev=${index.revision}`)).pipe(
+      map(value => parseDiscovery(value, index)),
+    );
+  }
+
+  loadDiscovery(): Observable<{ revision: string; items: readonly DiscoveryItem[] }> {
+    return this.index().pipe(switchMap(index => index.schema_version === 1
+      ? of({ revision: index.revision, items: index.items })
+      : this.discovery(index).pipe(map(items => ({ revision: index.revision, items }))),
+    ));
+  }
+
+  private query(index: CatalogIndex, page: number, filters: FeedFilters): Observable<NewsCatalog> {
+    return this.discovery(index).pipe(switchMap(rows => {
+      const matching = filterNews(rows, filters);
+      const totalPages = Math.ceil(matching.length / 100);
+      const effectivePage = Math.max(0, Math.min(page, totalPages - 1));
+      const selected = matching.slice(effectivePage * 100, (effectivePage + 1) * 100);
+      const wanted = new Set(selected.map(row => row.id));
+      // The compact rows follow the manifest's partition order. Fetch only
+      // partitions containing selected IDs; cap simultaneous HTTP requests.
+      const needed: number[] = [];
+      let offset = 0;
+      index.pages.forEach((descriptor, i) => {
+        if (rows.slice(offset, offset + descriptor.count).some(row => wanted.has(row.id))) needed.push(i);
+        offset += descriptor.count;
+      });
+      return from(needed).pipe(
+        mergeMap(i => {
+          const descriptor = index.pages[i];
+          const url = this.asset(`days/${descriptor.day}/${descriptor.part}.json?rev=${index.revision}`);
+          return this.http.get<unknown>(url).pipe(map(value => parseIndexedPage(value, index, descriptor)));
+        }, 6),
+        toArray(),
+        map(pages => {
+          const items = new Map<string, NewsItem>();
+          for (const item of pages.flatMap(part => part.items)) {
+            if (!wanted.has(item.id)) continue;
+            if (items.has(item.id)) throw new Error("Duplicate selected item");
+            items.set(item.id, item);
+          }
+          const result = selected.map(row => {
+            const item = items.get(row.id);
+            if (!item || !sameDiscovery(row, item)) throw new Error("Discovery and page mismatch");
+            return item;
+          });
+          return {
+            schema_version: 1 as const,
+            revision: index.revision,
+            items: result,
+            discovery: rows,
+            page_info: {
+              page: effectivePage,
+              total_pages: totalPages,
+              total_items: index.total_items,
+              total_matching: matching.length,
+              coverage_status: index.coverage_status ?? "unknown",
+            },
+          };
+        }),
+      );
+    }));
+  }
+
+  loadCatalog(page = 0, filters?: FeedFilters): Observable<NewsCatalog> {
     return this.index().pipe(
       switchMap((index) => {
         if (index.schema_version === 1) {
           return of(index);
         }
+        if (filters) return this.query(index, Number.isSafeInteger(page) ? page : 0, filters);
         if (
           !Number.isSafeInteger(page) ||
           page < 0 ||
@@ -47,7 +116,7 @@ export class StaticNewsRepository implements NewsReadRepository {
               schema_version: 1 as const,
               revision: index.revision,
               items: [],
-              page_info: { page: 0, total_pages: 0, total_items: 0 },
+              page_info: { page: 0, total_pages: 0, total_items: 0, coverage_status: index.coverage_status ?? "unknown" },
             });
           }
           return throwError(() => new Error("Unknown catalog page"));
@@ -124,7 +193,15 @@ export class StaticNewsRepository implements NewsReadRepository {
               }
               return catalog.items[0];
             }),
-            switchMap((item) => this.loadBody(item, index.revision)),
+            // Collector v2 never publishes full text. Derive body availability
+            // from validated revision-bound metadata, not a mutable body file.
+            map((item): NewsArticle => ({
+              item,
+              revision: index.revision,
+              body: { kind: "unavailable", reason: item.extraction_status === "extracted" ? "rights" :
+                item.extraction_status === "failed" ? "failed" :
+                item.extraction_status === "not_requested" ? "not_extracted" : "unknown" },
+            })),
             catchError((error: unknown) =>
               error instanceof HttpErrorResponse && error.status === 404
                 ? of(null)

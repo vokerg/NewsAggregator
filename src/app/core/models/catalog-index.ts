@@ -1,5 +1,5 @@
-import { NewsCatalog } from "./news";
-import { parseCatalog } from "./catalog-parser";
+import { DiscoveryItem, NewsCatalog } from "./news";
+import { isDiscoveryItem, parseCatalog } from "./catalog-parser";
 
 export interface CatalogPageDescriptor {
   readonly day: string;
@@ -108,10 +108,39 @@ export function parseIndexedPage(
   if (
     catalog.items.some(
       (item) =>
-        (item.published_at ?? item.first_seen_at).slice(0, 10) !== page.day,
+        new Date(item.published_at ?? item.first_seen_at).toISOString().slice(0, 10) !== page.day,
     )
   ) {
     throw new Error("Page contains the wrong calendar day");
   }
   return catalog;
+}
+
+/** Strict compact index; rows are grouped in manifest page order. */
+export function parseDiscovery(payload: unknown, index: CatalogIndex): readonly DiscoveryItem[] {
+  if (!isRecord(payload) || Object.keys(payload).sort().join(",") !== "revision,rows,schema_version" ||
+      payload["schema_version"] !== 2 || payload["revision"] !== index.revision ||
+      !Array.isArray(payload["rows"]) || payload["rows"].length !== index.total_items ||
+      !payload["rows"].every(isDiscoveryItem)) {
+    throw new Error("Invalid or stale discovery index");
+  }
+  const rows: DiscoveryItem[] = payload["rows"];
+  if (new Set(rows.map(row => row.id)).size !== rows.length) {
+    throw new Error("Duplicate discovery item IDs");
+  }
+  let offset = 0;
+  for (const page of index.pages) {
+    for (const row of rows.slice(offset, offset + page.count)) {
+      if (new Date(row.published_at ?? row.first_seen_at).toISOString().slice(0, 10) !== page.day) {
+        throw new Error("Discovery row outside its UTC page");
+      }
+    }
+    offset += page.count;
+  }
+  return rows;
+}
+
+export function sameDiscovery(row: DiscoveryItem, item: DiscoveryItem): boolean {
+  const keys = ["id", "source_id", "source_name", "published_at", "first_seen_at", "perspective_ids", "about_country_codes", "language", "publisher_country", "editorial_labels", "tags"] as const;
+  return keys.every(key => JSON.stringify(row[key]) === JSON.stringify(item[key]));
 }

@@ -1,4 +1,4 @@
-import { NewsCatalog, NewsItem } from "./news";
+import { DiscoveryItem, NewsCatalog, NewsItem } from "./news";
 
 const CATALOG_KEYS = ["schema_version", "revision", "items"];
 const OPTIONAL_ITEM_KEYS = [
@@ -7,18 +7,16 @@ const OPTIONAL_ITEM_KEYS = [
   "publisher_country",
   "editorial_labels",
 ];
-const ITEM_KEYS = [
+const DISCOVERY_KEYS = [
   "id",
-  "title",
   "source_id",
   "source_name",
-  "original_url",
   "published_at",
   "first_seen_at",
   "perspective_ids",
   "about_country_codes",
-  "extraction_status",
-];
+ ];
+const ITEM_KEYS = [...DISCOVERY_KEYS, "title", "original_url", "extraction_status"];
 
 // Catalogs are temporary bounded pages, not a substitute for the archive.
 // Large, partitioned read models will get their own schema in issue #4.
@@ -127,25 +125,12 @@ function isSafePublisherUrl(value: unknown): value is string {
   }
 }
 
-function isNewsItem(value: unknown): value is NewsItem {
-  if (
-    !isRecord(value) ||
-    !ITEM_KEYS.every((key) =>
-      Object.prototype.hasOwnProperty.call(value, key),
-    ) ||
-    Object.keys(value).some(
-      (key) => ![...ITEM_KEYS, ...OPTIONAL_ITEM_KEYS].includes(key),
-    )
-  )
-    return false;
-
+function hasDiscoveryFields(value: Record<string, unknown>): boolean {
   return (
     isPublicText(value["id"], 128) &&
     /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(value["id"]) &&
-    isPublicText(value["title"], 500) &&
     isPublicText(value["source_id"], 128) &&
     isPublicText(value["source_name"], 120) &&
-    isSafePublisherUrl(value["original_url"]) &&
     (value["published_at"] === null ||
       isZonedTimestamp(value["published_at"])) &&
     isZonedTimestamp(value["first_seen_at"]) &&
@@ -159,7 +144,23 @@ function isNewsItem(value: unknown): value is NewsItem {
       (typeof value["publisher_country"] === "string" &&
         /^[A-Z]{2}$/.test(value["publisher_country"]))) &&
     (value["editorial_labels"] === undefined ||
-      isStringList(value["editorial_labels"])) &&
+      isStringList(value["editorial_labels"]))
+  );
+}
+
+export function isDiscoveryItem(value: unknown): value is DiscoveryItem {
+  return isRecord(value) && DISCOVERY_KEYS.every((key) => Object.hasOwn(value, key)) &&
+    Object.keys(value).every((key) => [...DISCOVERY_KEYS, ...OPTIONAL_ITEM_KEYS].includes(key)) &&
+    hasDiscoveryFields(value);
+}
+
+function isNewsItem(value: unknown): value is NewsItem {
+  return (
+    isRecord(value) && ITEM_KEYS.every((key) => Object.hasOwn(value, key)) &&
+    Object.keys(value).every((key) => [...ITEM_KEYS, ...OPTIONAL_ITEM_KEYS].includes(key)) &&
+    hasDiscoveryFields(value) &&
+    isPublicText(value["title"], 500) &&
+    isSafePublisherUrl(value["original_url"]) &&
     typeof value["extraction_status"] === "string" &&
     ["extracted", "unavailable", "failed", "not_requested"].includes(
       value["extraction_status"],
