@@ -1,5 +1,7 @@
 <section aria-labelledby="article-title">
-  <a class="back-link" routerLink="/news">← Back to news</a>
+  <a class="back-link" routerLink="/news" queryParamsHandling="preserve"
+    >← Back to news</a
+  >
 
   @if (state(); as detail) { @switch (detail.kind) { @case ('loading') {
   <h1 id="article-title">Article</h1>

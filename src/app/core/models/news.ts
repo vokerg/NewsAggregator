@@ -11,6 +11,10 @@ export interface NewsItem {
   readonly perspective_ids: readonly string[];
   readonly about_country_codes: readonly string[];
   readonly tags?: readonly string[];
+  /** Optional producer metadata; unknown must not be inferred from language or subject. */
+  readonly language?: string;
+  readonly publisher_country?: string;
+  readonly editorial_labels?: readonly string[];
   readonly extraction_status:
     | "extracted"
     | "unavailable"

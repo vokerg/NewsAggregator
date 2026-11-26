@@ -1,0 +1,53 @@
+h1 {
+  margin: 0.25rem 0 1rem;
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.lede {
+  max-width: 47rem;
+  color: var(--color-muted);
+}
+
+.source-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.source-list li,
+.source-status {
+  padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+}
+
+.source-list h2 {
+  margin-top: 0;
+  font-size: 1.25rem;
+}
+
+.source-list p {
+  overflow-wrap: anywhere;
+}
+
+.source-list a {
+  display: inline-block;
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
+}
+
+.source-notice {
+  padding: 0.8rem 1rem;
+  border-left: 4px solid var(--color-link);
+  background: var(--color-surface);
+  font-weight: 700;
+}
+
+.source-status button {
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  padding: 0.6rem 1rem;
+}

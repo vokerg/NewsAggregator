@@ -13,7 +13,10 @@
       "perspective_ids": ["dk-media"],
       "about_country_codes": ["UA"],
       "tags": ["world", "illustration"],
-      "extraction_status": "extracted"
+      "extraction_status": "extracted",
+      "language": "da",
+      "publisher_country": "DK",
+      "editorial_labels": ["synthetic-example"]
     },
     {
       "id": "demo-moldovan-002",
@@ -26,7 +29,10 @@
       "perspective_ids": ["md-media"],
       "about_country_codes": ["MD"],
       "tags": ["economy"],
-      "extraction_status": "unavailable"
+      "extraction_status": "unavailable",
+      "language": "ru",
+      "publisher_country": "MD",
+      "editorial_labels": ["synthetic-example"]
     }
   ]
 }

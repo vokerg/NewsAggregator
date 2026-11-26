@@ -1,0 +1,41 @@
+<section aria-labelledby="sources-title">
+  <h1 id="sources-title">Sources in the catalog</h1>
+  <p class="lede">
+    Sources listed here have items in the current public catalog. This is not
+    the full source registry or evidence of live collection.
+  </p>
+  @if (state(); as sources) { @switch (sources.kind) { @case ('loading') {
+  <p role="status">Loading sources…</p>
+  } @case ('error') {
+  <div class="source-status" role="alert">
+    <h2>Sources unavailable</h2>
+    <p>Could not load the public catalog.</p>
+    <button type="button" (click)="reload()">Retry loading</button>
+  </div>
+  } @case ('ready') { @if (sources.revision.startsWith('fixture-')) {
+  <p class="source-notice" role="note">
+    Demonstration data only: these publishers and articles are invented.
+  </p>
+  } @if (sources.sources.length === 0) {
+  <p role="status">No sources appear in the public catalog yet.</p>
+  } @else {
+  <ul class="source-list" aria-label="Catalog sources">
+    @for (source of sources.sources; track source.id) {
+    <li>
+      <h2>{{ source.name }}</h2>
+      <p><strong>Source ID:</strong> {{ source.id }}</p>
+      <p>
+        <strong>View from:</strong>
+        {{ source.perspectives.join(', ') || 'Unknown' }}
+      </p>
+      <p>
+        {{ source.count }} {{ source.count === 1 ? 'article' : 'articles' }}
+      </p>
+      <a routerLink="/news" [queryParams]="{ source: source.id }">
+        Browse articles from this source
+      </a>
+    </li>
+    }
+  </ul>
+  } } } }
+</section>

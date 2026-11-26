@@ -18,5 +18,13 @@ export const routes: Routes = [
         (module) => module.NewsDetailPage,
       ),
   },
+  {
+    path: "sources",
+    title: "Sources | NewsAggregator",
+    loadComponent: () =>
+      import("./features/source-browser/source-browser.page").then(
+        (module) => module.SourceBrowserPage,
+      ),
+  },
   { path: "**", redirectTo: "news" },
 ];

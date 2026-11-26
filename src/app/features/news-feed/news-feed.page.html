@@ -20,7 +20,13 @@
   <p class="demo-notice" role="note">
     Demonstration data only: these are invented articles, not collected news.
   </p>
-  } @if (feed.items.length === 0) {
+  }
+  <app-news-filters
+    [filters]="filters()"
+    [options]="options()"
+    (filtersChanged)="updateFilters($event)"
+  />
+  @if (feed.items.length === 0) {
   <div class="status-panel" role="status">
     <h2>No articles yet</h2>
     <p>
@@ -29,13 +35,22 @@
     </p>
   </div>
   } @else {
-  <p class="result-count">
-    {{ count() }} {{ count() === 1 ? 'article' : 'articles' }}
+  <p class="result-count" role="status" aria-live="polite">
+    {{ count() }} {{ count() === 1 ? 'article' : 'articles' }} of {{
+    feed.items.length }} total
   </p>
+  @if (filters().from && filters().to && filters().from > filters().to) {
+  <p role="alert">The From date is later than the To date.</p>
+  } @if (visibleItems().length === 0) {
+  <div class="status-panel" role="status">
+    <h2>No matching articles</h2>
+    <p>Try changing or clearing the selected filters.</p>
+  </div>
+  } @else {
   <ul class="card-grid" aria-label="News articles">
-    @for (item of feed.items; track item.id) {
+    @for (item of visibleItems(); track item.id) {
     <li><app-news-card [item]="item" /></li>
     }
   </ul>
-  } } } }
+  } } } } }
 </section>
