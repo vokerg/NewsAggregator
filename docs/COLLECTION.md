@@ -1,6 +1,6 @@
 # Source collection foundation — issue #8
 
-Status (2026-11-18): **fixture-tested source adapter infrastructure only**. No publisher is enabled; no production collection, remote live smoke, hosted scheduler, GitHub write workflow, Angular app, or Pages reader exists as a consequence of this change. `config/source_candidates.json` remains an unresolved candidate, not an enabled source.
+The Python collector supports offline fixtures and manual live collection over the enabled sources in `config/sources.json`. The unresolved candidate stays in `config/source_candidates.json`.
 
 ## Prerequisites and verification
 
@@ -11,13 +11,41 @@ python -m compileall -q newsagg tests
 python -m unittest discover -s tests -v
 python -m newsagg --registry tests/fixtures/registry.json \
   --fixture-map tests/fixtures/fixtures-map.json \
-  --output .local/newsagg --at 2026-11-18T08:00:00Z
+  --output .local/newsagg-fixtures --at 2026-11-18T08:00:00Z
 # Same command a second time produces no duplicate public item IDs.
 ```
 
-Fixture output: `.local/newsagg/public/items.ndjson`, `.local/newsagg/public/status.json`, `.local/newsagg/state.json`; the `.local/` directory is ignored. The fixture uses invented `.example.org` publishers **only**. No real source requests are sent. The source registry at `config/sources.json` is deliberately empty.
+Fixture output goes to `.local/newsagg-fixtures/public/items.ndjson`, `.local/newsagg-fixtures/public/status.json`, and `.local/newsagg-fixtures/state.json`. Git ignores `.local/`. The fixture uses invented `.example.org` publishers.
 
-To run against an explicitly approved/verified real publisher **after** checking terms/robots and enabling its row, a human operator may use `python -m newsagg --live --registry config/sources.json --output .local/newsagg`. The `--live` flag is required. No cron/GitHub Action currently invokes a live run, and the current empty registry does nothing. The operator is responsible for publishing only reviewed, permitted metadata artifacts through commits. The public read-model manifest, repository committer, and Angular reader belong to later issues.
+Run the enabled live sources with `python -m newsagg --live --output .local/newsagg`. The CLI enforces robots rules for its own user agent on each destination. Publication and the Angular read-model transformation are tracked in issue #4.
+
+## Danish sources
+
+Both sources attribute coverage to `dk-media`, with publisher country `DK` and language `da`. Subject geography stays unknown until classified. Their cadence is 288 minutes per source. For an immediate repeat check, add `--force`.
+
+- DR's **Kort nyt** feed returns 20 entries with individual permalinks, including full articles linked from that section. The extractor reads the primary `NewsArticle` body. On 2026-11-24, two live cycles each returned 20 readable bodies and zero skips. IDs, original URLs, headlines, publication dates and first-seen timestamps matched across both cycles. The short-news index exposed 14 distinct short-news permalink anchors, 13 of which were in the collected snapshot. Coverage is limited to the feed window for that section. [DR Nyheder RSS](https://www.dr.dk/nyheder/service/feeds/allenyheder) · [Kort nyt index](https://www.dr.dk/nyheder/seneste)
+- The TV 2 collector reads up to 50 entries from the publisher's RSS and follows links to `nyheder.tv2.dk`. It extracts the main article's editorial text blocks, excluding embeds, teasers, headers and footers. For syndicated items, the archive retains the TV 2 permalink even if the page names a regional partner's canonical URL. The dated permalink anchors in the **Seneste** index overlapped with 10 of the 50 feed entries in a separate snapshot on 2026-11-24. The index exposed 27 such anchors. [TV 2 Nyheder RSS](https://feeds.services.tv2.dk/api/feeds/nyheder/rss) · [Seneste index](https://nyheder.tv2.dk/seneste)
+
+Article text is parsed in memory. The local archive records metadata and body character counts. Publisher republication rights remain unverified.
+
+The combined live runs started at 18:50:55 and 18:52:32 UTC on 2026-11-24. Each run discovered and extracted 20 DR items and 50 TV 2 items with zero skips or errors. All 70 IDs, URLs, headlines, publication times and first-seen times matched across runs. DR body lengths ranged from 89 to 1,478 characters and TV 2 body lengths ranged from 137 to 11,093 in the first combined run.
+
+## NewsMaker and Meduza
+
+- NewsMaker has two independent RSS windows of 10 items each. The registry tracks Russian and Romanian separately, so translation links can coexist and each edition keeps its own language. Both have publisher country `MD` and perspective `md-media`. The extractor reads the current post and skips articles appended by infinite scroll. On 2026-11-24, all 10 permalinks from each feed were present in the corresponding homepage snapshot. NewsMaker's republication rules exclude aggregators from its partial-republication exception. [Russian feed](https://newsmaker.md/ru/feed) · [Romanian feed](https://newsmaker.md/ro/feed) · [Publisher rules](https://newsmaker.md/ru/pravovaya-informacziya)
+- The Russian Meduza feed returns 30 items, covering news and features. Meduza is registered in Riga, so the registry uses publisher country `LV`, Russian language and perspective `ru-independent-media`. The extractor uses the article's editorial container and excludes recommendations, embeds and sharing controls. On 2026-11-24, all 30 permalinks in a feed snapshot appeared on the homepage, with 21 news items and nine features. The homepage for the English edition advertises a separate feed that stays outside this registry. Meduza describes CC BY exceptions for particular sets of articles. The collector applies the same metadata-only handling across the feed. [Russian feed](https://meduza.io/rss/all) · [English feed](https://meduza.io/rss/en/all) · [Publisher rules](https://meduza.io/pages/contacts)
+
+The first five-feed live run started at 18:59:13 UTC on 2026-11-24 and completed in about 141 seconds. It extracted all 120 discovered bodies with zero skips or errors, including 10 per NewsMaker edition and 30 from Meduza. Body lengths ranged from 1,671 to 5,394 characters for Russian NewsMaker, from 1,641 to 5,995 for Romanian NewsMaker, and from 517 to 12,101 for Meduza.
+
+## Ukrainian sources and Rossiya 24
+
+- **Suspilne Novyny** is the primary Ukrainian reference. The Institute of Mass Information (IMI) placed it above 95% in its third-quarter 2026 standards review, which sampled 100 news items per outlet. The publisher's editorial rules require visible corrections, and the European Commission's 2026 Ukraine report describes Suspilne as editorially independent. The collector reads up to 20 current items from the publisher's Ukrainian RSS, with national and regional coverage. [IMI monitoring](https://imi.org.ua/monitorings/novyny-pid-chas-vijny-analiz-standartiv-onlajn-media-v-tretomu-kvartali-2026-roku) · [Editorial rules](https://corp.suspilne.media/media/documents/protokoli-pravlinnya/redaktsiini_zasady_informatsiinoho_movlennia_PAT_%C2%ABNSTU%C2%BB.pdf) · [European Commission report](https://enlargement.ec.europa.eu/document/download/c817ca8c-4ddf-405d-896a-40becd42924a_en?filename=ukraine-report-2026.pdf) · [Publisher RSS](https://suspilne.media/rss/ukrnet.rss)
+- **UNIAN** is included for comparison with the `corroboration-needed` editorial label. IMI put it below 50% in the same sample. The aggregate findings describe the outlet's practices during the monitoring period. The collector reads up to 20 items from its main Ukrainian edition. Hromadske, Babel and Ukrainska Pravda also exceeded 95% and are candidates for a second reference. [IMI monitoring](https://imi.org.ua/monitorings/novyny-pid-chas-vijny-analiz-standartiv-onlajn-media-v-tretomu-kvartali-2026-roku) · [UNIAN publisher RSS](https://rss.unian.net/site/news_ukr.rss) · [UNIAN terms](https://www.unian.ua/static/siterules)
+- **Rossiya 24** carries the `state-owned` and `propaganda` editorial labels and the `ru-state-media` perspective. The EU lists it among Kremlin-backed outlets subject to broadcasting restrictions. The collector samples up to 10 episodes of **Факты**, a programme listed on the official channel page. It reads HTML listings and episode pages for the original title, permalink, upload date when available, and the broadcaster's own description. The source covers this programme's archive. No stream, video, audio, or transcript is retrieved or stored. [Official channel](https://smotrim.ru/channel/3) · [Programme archive](https://smotrim.ru/brand/40925) · [EU Council listing](https://www.consilium.europa.eu/en/policies/sanctions-against-russia-explained/)
+
+Rossiya 24 uses the `local_only` profile. Its records go to `research/items.ndjson` under the chosen local output directory. The ordinary `public/items.ndjson` and `public/status.json` exclude that source. CLI status includes both archives. The research archive is for personal monitoring and is excluded from the public projection.
+
+Two targeted live runs on 2026-11-24 at 19:10:34 and 19:11:57 UTC each collected 20 UNIAN articles, 20 Suspilne articles, and 10 Rossiya 24 episode records with zero skips or source errors. The repeat run saved titles, upload dates and publisher descriptions for all 10 episodes. The 50 IDs, original URLs, titles and dates were stable across runs. Archive validation confirmed that all 10 Rossiya 24 records were confined to the research output.
 
 ## Registry contract (`config/sources.json`, version 1)
 
@@ -27,10 +55,10 @@ The root is `{ "version": 1, "timezone": "Europe/Copenhagen", "sources": [] }`. 
 | --- | --- |
 | `source_id`, `display_name`, `enabled` | Stable lowercase provenance identity, publisher label and opt-in switch. Disable, do not silently rename, an established source ID. |
 | `canonical_home_url`, `index_url`, `allowed_hosts` | HTTPS origins and an explicit exact/suffix publisher allowlist for link discovery, article retrieval, redirects and pagination. No userinfo, sensitive query parameters/fragments or non-443 ports. |
-| `adapter`, `item_tag`, `link_path_prefix` | `rss` (RSS 1.0, RSS 2.0 or Atom) or `web` (bounded HTML `<article>` index by default). Web-specific index tag and link-path filter are configurable. No universal parser claim. |
+| `adapter`, `item_tag`, `link_path_prefix` | `rss` (RSS 1.0, RSS 2.0 or Atom), `web` (bounded HTML index), or `rossiya24-episodes` (the programme archive and its episode metadata). Web index tag and link prefix are configurable. |
 | `publisher_country`, `languages`, `perspective_ids`, `editorial_labels` | Distinct publisher properties: country is ISO alpha-2 or null; languages and perspectives are distinct required lists; editorial labels describe provenance, **not** factual truth. |
 | `cadence_minutes`, `max_pages`, `max_items` | Per-source cadence gate (288 minutes means five *opportunities* per 24h), bounded index requests (1–10), bounded candidates (1–100). A caller still has to invoke the CLI. |
-| `extract_body`, `rights_profile` | Optional in-memory body extraction and `unknown` / `metadata_only` / `licensed_text` handling. **None** permits publishing captured full article text through this collector. |
+| `extract_body`, `rights_profile` | Optional in-memory body extraction and `unknown`, `metadata_only`, `licensed_text`, or `local_only` handling. Full article text is excluded from the collector's archives. The `local_only` profile keeps source records and status out of the public projection. |
 
 Unknown fields, duplicate IDs, invalid timezone and unsafe URLs fail schema validation. Existing source IDs remain in the registry when disabled; historical rows retain the original perspective and editorial labels at capture. The synthetic fixture registry is for testing only.
 
@@ -40,7 +68,7 @@ Unknown fields, duplicate IDs, invalid timezone and unsafe URLs fail schema vali
 2. For each discovered candidate, optionally call `extract_body(html)` on the linked publisher article. Extraction returns `(text | None, published_at | None)` in memory. If `<article>` cannot be found, the body is unavailable. HTTP error/robots denial yields `failed` body extraction without deleting the headline record. No paywall bypass or article-by-article LLM summary.
 3. `make_item` builds a strict version-1 **public metadata projection**. ID is `<source_id>-<first 24 hex SHA256(source_id + newline + canonical_url)>`. `original_url` retains the exact link; canonical URL drops the fragment and recognized tracking parameters. Changing other query parameters changes identity. `published_at` may be **null**; `first_seen_at` and `last_seen_at` are observed UTC, never substituted for publication time. `about_country_codes: []` explicitly means unknown geography, even if the outlet is Danish. `perspective_ids_at_capture` is source attribution. Public rows never contain captured article text/HTML, response headers, raw payload, exception strings, cookies, credentials or direct API keys; `body_char_count` is present only for successfully extracted bodies.
 4. `run(registry, fetcher, output, now, force=False)` gates collection by per-source cadence, isolates source failures and merges by stable ID. A repeat preserves `first_seen_at`, initial original URL and attribution, updates `last_seen_at`, and can upgrade failed/not-requested body extraction to extracted. Status values are `ok`, `partial`, `failed`, `idle`, per-source counts are `discovered`, `extracted`, `skipped`, with **enumerated** safe error codes. A source cursor is a successful cycle timestamp / advisory watermark, **not** a feed pagination token; it advances **only on `ok`**, never on partial/failed. Discovery deliberately does not discard older published entries based on this watermark, protecting late arrivals.
-5. A Unix file lock protects one writer. Existing NDJSON and JSON state are parsed and validated before writing. Items, state and status use temporary files, fsync and atomic replace. Archive is written before state so interruption may leave a retryable idempotent archive. **Three-file transactionality is not guaranteed**; an interrupted process may require a retry for status reconciliation.
+5. A Unix file lock protects one writer. Existing NDJSON and JSON state are parsed and validated before writing. Items, state and status use temporary files, fsync and atomic replace. Archives are written before state so interruption may require a retry to reconcile status. A populated output directory rejects changes that would move a previously collected source between the public and research archives.
 
 ## Network policy (live mode only)
 
@@ -61,7 +89,7 @@ Reviewed `vokerg/war_reporter` current `README.md`, `METHODOLOGY.md`, `SOURCE_LI
 
 ## Follow-up boundaries
 
-Each real DR, TV 2, NewsMaker or Meduza onboarding remains blocked until its own source task verifies canonical endpoints, robots/terms, schema mapping and targeted live smoke. The ambiguous spoken candidate remains disabled. GitHub Actions here runs **offline test fixtures only**. Scheduled live collection, publicly committed real data, publishing workflow and Angular UI require explicit later work.
+GitHub Actions runs offline fixtures. Scheduling, publication and integration with the Angular catalog are separate work.
 
 
 ## Self-review and hosted verification — 2026-11-22

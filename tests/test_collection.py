@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timezone, timedelta
 import json
 from pathlib import Path
@@ -32,8 +32,25 @@ def fixtures():
 
 
 class RegistryTests(unittest.TestCase):
-    def test_empty_real_registry_has_no_enabled_sources(self):
-        self.assertEqual(load_registry(Path("config/sources.json"))[1], [])
+    def test_real_registry_preserves_publisher_country_language_and_perspective(self):
+        registry = load_registry(Path("config/sources.json"))[1]
+        by_id = {source.source_id: source for source in registry}
+        expected = {
+            "dr-nyheder": ("DR Nyheder", "DK", ("da",), ("dk-media",)),
+            "tv2-nyheder": ("TV 2 Nyheder", "DK", ("da",), ("dk-media",)),
+            "newsmaker-ru": ("NewsMaker (Russian)", "MD", ("ru",), ("md-media",)),
+            "newsmaker-ro": ("NewsMaker (Romanian)", "MD", ("ro",), ("md-media",)),
+            "meduza-ru": ("Meduza (Russian)", "LV", ("ru",), ("ru-independent-media",)),
+            "unian-uk": ("УНІАН", "UA", ("uk",), ("ua-media",)),
+            "suspilne-novyny": ("Суспільне Новини", "UA", ("uk",), ("ua-media",)),
+            "rossiya-24": ("Россия 24", "RU", ("ru",), ("ru-state-media",)),
+        }
+        for source_id, metadata in expected.items():
+            with self.subTest(source=source_id):
+                source = by_id[source_id]
+                self.assertTrue(source.enabled)
+                self.assertEqual((source.display_name, source.publisher_country, source.languages,
+                                  source.perspective_ids), metadata)
 
     def test_registry_rejects_unknown_timezone(self):
         payload = json.loads((FIX / "registry.json").read_text())
@@ -147,6 +164,101 @@ class AdapterTests(unittest.TestCase):
         body, _ = extract_body(html)
         self.assertEqual(body, "Visible")
 
+    def test_dr_body_reads_only_the_primary_article(self):
+        dr = replace(sources()[0], source_id="dr-nyheder")
+        html = ('<article itemscope itemtype="https://schema.org/NewsArticle">'
+                '<meta itemprop="datePublished" content="2026-11-24T12:00:00+01:00">'
+                '<h1>Headline</h1><div itemprop="articleBody">'
+                '<p>Text with a <a href="/nyheder/example">link</a>, and more.</p>'
+                '<p>Second paragraph.</p></div><p>Related links</p></article>'
+                '<article><div itemprop="articleBody">Unrelated story.</div></article>')
+        self.assertEqual(extract_body(html, source=dr),
+                         ("Text with a link, and more. Second paragraph.", "2026-11-24T11:00:00Z"))
+
+    def test_dr_index_and_headline_only_are_not_article_bodies(self):
+        dr = replace(sources()[0], source_id="dr-nyheder")
+        html = ('<article itemscope itemtype="https://schema.org/NewsArticle">'
+                '<h1>Headline only</h1></article>'
+                '<article><div itemprop="articleBody">Unrelated story.</div></article>')
+        self.assertEqual(extract_body(html, source=dr), (None, None))
+
+    def test_tv2_body_reads_editorial_text_across_multiple_blocks(self):
+        tv2 = replace(sources()[0], source_id="tv2-nyheder")
+        html = ('<article class="tc_deck tc_article__wrapper">'
+                '<header class="tc_page__header"><div class="tc_richcontent">Standfirst.</div></header>'
+                '<div class="tc_page__body"><div class="tc_richcontent"><p>First paragraph.</p></div>'
+                '<div class="tc_embed"><div class="tc_richcontent">Embedded text.</div></div>'
+                '<div class="tc_richcontent"><h2>Subheading</h2><p>Second paragraph.</p></div></div>'
+                '<div class="tc_page__footer"><div class="tc_richcontent">Related link.</div></div>'
+                '</article><article class="tc_teaser">Another article.</article>')
+        self.assertEqual(extract_body(html, source=tv2),
+                         ("First paragraph. Subheading Second paragraph.", None))
+
+    def test_newsmaker_body_excludes_infinite_scroll_articles(self):
+        html = ('<meta property="article:published_time" content="2026-11-24T18:00:00Z">'
+                '<div class="js-current-article"><h1>Headline</h1>'
+                '<div class="elementor-widget-theme-post-content"><p>First story.</p></div></div>'
+                '<div class="js-infinite-scroll-article js-current-article">'
+                '<div class="elementor-widget-theme-post-content"><p>Another story.</p></div></div>')
+        for source_id in ("newsmaker-ru", "newsmaker-ro"):
+            with self.subTest(source=source_id):
+                source = replace(sources()[0], source_id=source_id)
+                self.assertEqual(extract_body(html, source=source), ("First story.", "2026-11-24T18:00:00Z"))
+                related_only = html[html.index('<div class="js-infinite-scroll-article'):]
+                self.assertEqual(extract_body(related_only, source=source), (None, None))
+                video = html.replace('class="js-current-article"', 'class="big-article"')
+                self.assertEqual(extract_body(video, source=source), ("First story.", "2026-11-24T18:00:00Z"))
+
+    def test_meduza_body_excludes_recommendations_embeds_and_share_tools(self):
+        source = replace(sources()[0], source_id="meduza-ru")
+        html = ('<div class="GeneralMaterial-module-article"><p>First paragraph.</p>'
+                '<div class="RelatedList-module-root"><article>Recommended story.</article></div>'
+                '<figure class="EmbedBlock-module_root__fixture">Embedded post.</figure>'
+                '<p>Second paragraph.</p>'
+                '<div class="Toolbar-module_root__fixture">Share.</div></div>')
+        self.assertEqual(extract_body(html, source=source), ("First paragraph. Second paragraph.", None))
+        self.assertEqual(extract_body('<article>Recommended story.</article>', source=source), (None, None))
+
+    def test_ukrainian_extractors_target_the_primary_text_container(self):
+        examples = (
+            ("unian-uk", '<div class="article"><h1>Title</h1>'
+             '<div class="article-text"><p>Article text.</p></div><p>Read more.</p></div>'),
+            ("suspilne-novyny", '<article class="post-body"><h1>Title</h1>'
+             '<div class="l-article-content__container-inner c-art-c__c"><p>Article text.</p></div></article>'
+             '<article class="post-aside">Related stories.</article>'),
+        )
+        for source_id, html in examples:
+            with self.subTest(source=source_id):
+                self.assertEqual(extract_body(html, source=replace(sources()[0], source_id=source_id)),
+                                 ("Article text.", None))
+
+    def test_rossiya24_discovers_only_episode_title_links_and_preserves_unknown_dates(self):
+        source = replace(sources()[1], adapter="rossiya24-episodes", item_tag="div",
+                         link_path_prefix="/video/")
+        base = "https://news.example.org"
+
+        class EpisodeFixtures:
+            def get(self, url, _source):
+                if url == source.index_url:
+                    return url, ('<div class="card-episode__date"><a href="/video/1">Date label</a></div>'
+                                 '<div class="card-episode__title"><a href="/video/1">First episode</a></div>'
+                                 '<div class="card-episode__title"><a href="/video/2">Second episode</a></div>'
+                                 '<a href="/video/3">Unrelated video</a>')
+                if url == base + "/video/1":
+                    return url, ('<meta property="og:description" content="Publisher episode description.">'
+                                 '<script type="application/ld+json">{"@type":"VideoObject",'
+                                 '"uploadDate":"2026-11-24T22:00:00+03:00"}</script>'
+                                 '<iframe src="/video/3"></iframe>')
+                if url == base + "/video/2":
+                    raise FetchError("http_error")
+                raise AssertionError(url)
+
+        result = discover(source, EpisodeFixtures(), AT)
+        self.assertEqual(result.items, [
+            Candidate(base + "/video/1", "First episode", "2026-11-24T19:00:00Z", "Publisher episode description."),
+            Candidate(base + "/video/2", "Second episode", None),
+        ])
+
     def test_invalid_article_link_is_skipped(self):
         result, _ = parse_index('<article><a href="https://evil.org/secret">Story</a></article>', "https://news.example.org/news", sources()[1])
         self.assertEqual((len(result.items), result.skipped), (0, 1))
@@ -245,6 +357,31 @@ class FetchTests(unittest.TestCase):
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_local_only_archive_is_excluded_from_public_items_and_status(self):
+        rss, web = sources()
+        research = replace(rss, rights_profile="local_only", extract_body=False)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            report = run([research, web], fixtures(), path, now=AT)
+            repeat = run([research, web], fixtures(), path, now=AT + timedelta(hours=5), force=True)
+            self.assertEqual((report["total_item_count"], repeat["total_item_count"]), (4, 4))
+            public = _read_items(path / "public/items.ndjson")
+            private = _read_items(path / "research/items.ndjson", local_only=True)
+            self.assertEqual({row["source_id"] for row in public.values()}, {web.source_id})
+            self.assertEqual({row["source_id"] for row in private.values()}, {research.source_id})
+            public_status = json.loads((path / "public/status.json").read_text())
+            self.assertEqual(public_status["total_item_count"], 2)
+            self.assertEqual(set(public_status["sources"]), {web.source_id})
+            with self.assertRaises(ValidationError):
+                validate_public_item(next(iter(private.values())))
+            candidate = Candidate("https://news.example.org/stories/one", "Episode", None, "Publisher description.")
+            row = make_item(research, candidate, AT, "not_requested", None, None)
+            self.assertEqual(row["publisher_description"], "Publisher description.")
+            with self.assertRaises(ValidationError):
+                validate_public_item(row)
+            with self.assertRaises(ValidationError):
+                run([rss, web], fixtures(), path, now=AT + timedelta(hours=10), force=True)
+
     def test_e2e_idempotence_cadence_and_timestamp(self):
         with tempfile.TemporaryDirectory() as d:
             path = Path(d)

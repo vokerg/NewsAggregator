@@ -5,11 +5,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from html.parser import HTMLParser
+import json
 import re
 from urllib.parse import urljoin, urlsplit
 import xml.etree.ElementTree as ET
 
-from .models import Source, ValidationError, parse_timestamp, require_url
+from .models import Source, ValidationError, check_public_text, parse_timestamp, require_url
 from .fetch import FetchError
 
 
@@ -18,6 +19,7 @@ class Candidate:
     original_url: str
     headline: str
     published_at: str | None
+    publisher_description: str | None = None
 
 
 @dataclass(frozen=True)
@@ -95,9 +97,10 @@ VOID_TAGS = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link",
 
 
 class IndexParser(HTMLParser):
-    def __init__(self, item_tag: str):
+    def __init__(self, item_tag: str, item_class: str | None = None):
         super().__init__(convert_charrefs=True)
         self.item_tag = item_tag
+        self.item_class = item_class
         self.depth = 0
         self.link_depth = 0
         self.anchor_url = ""
@@ -111,7 +114,7 @@ class IndexParser(HTMLParser):
         a = dict(attrs)
         if tag == "a" and "next" in (a.get("rel") or "").split():
             self.next_url = a.get("href")
-        if tag == self.item_tag:
+        if tag == self.item_tag and (self.item_class is None or self.item_class in (a.get("class") or "").split()):
             self.depth += 1
             if self.depth == 1:
                 self.date = None
@@ -142,8 +145,9 @@ class IndexParser(HTMLParser):
                 self.pending = []
 
 
-def parse_index(html_text: str, base_url: str, source: Source) -> tuple[Discovery, str | None]:
-    parser = IndexParser(source.item_tag)
+def parse_index(html_text: str, base_url: str, source: Source, *,
+                item_class: str | None = None) -> tuple[Discovery, str | None]:
+    parser = IndexParser(source.item_tag, item_class)
     parser.feed(html_text)
     rows, skipped = [], 0
     for href, title, published in parser.rows[:source.max_items]:
@@ -158,8 +162,74 @@ def parse_index(html_text: str, base_url: str, source: Source) -> tuple[Discover
     return Discovery(rows, skipped, None), urljoin(base_url, parser.next_url) if parser.next_url else None
 
 
+class VideoMetadataParser(HTMLParser):
+    """Read the original episode description and structured upload timestamp."""
+
+    def __init__(self):
+        super().__init__()
+        self.in_json = False
+        self.parts: list[str] = []
+        self.published_at: str | None = None
+        self.description: str | None = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "script" and attributes.get("type") == "application/ld+json":
+            self.in_json = True
+            self.parts.clear()
+        if tag == "meta" and attributes.get("property") == "og:description" and self.description is None:
+            description = " ".join((attributes.get("content") or "").split())
+            try:
+                self.description = check_public_text(description, max_length=2500) or None
+            except ValidationError:
+                pass
+
+    def handle_data(self, data: str) -> None:
+        if self.in_json:
+            self.parts.append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag != "script" or not self.in_json:
+            return
+        self.in_json = False
+        try:
+            entry = json.loads("".join(self.parts))
+        except (ValueError, RecursionError):
+            return
+        if isinstance(entry, dict) and entry.get("@type") == "VideoObject":
+            upload_date = entry.get("uploadDate")
+            if isinstance(upload_date, str):
+                self.published_at = self.published_at or _date(upload_date)
+
+
+def discover_rossiya24(source: Source, fetcher, at: datetime) -> Discovery:
+    final_url, html = fetcher.get(source.index_url, source)
+    index, _ = parse_index(html, final_url, source, item_class="card-episode__title")
+    if not index.items:
+        raise FetchError("bad_item")
+
+    # Episode pages are HTML. The fetcher never follows a player or media URL.
+    episodes: dict[str, Candidate] = {}
+    for item in index.items:
+        if item.original_url in episodes:
+            continue
+        metadata = VideoMetadataParser()
+        try:
+            _, html = fetcher.get(item.original_url, source)
+            metadata.feed(html)
+        except FetchError:
+            # The original listing still establishes the title and permalink.
+            pass
+        episodes[item.original_url] = Candidate(item.original_url, item.headline,
+                                               metadata.published_at, metadata.description)
+    cursor = at.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return Discovery(list(episodes.values()), index.skipped, cursor)
+
+
 def discover(source: Source, fetcher, at: datetime) -> Discovery:
     """Failure aborts discovery and keeps old cursor. No live source runs in fixtures."""
+    if source.adapter == "rossiya24-episodes":
+        return discover_rossiya24(source, fetcher, at)
     all_rows: list[Candidate] = []
     seen_urls: set[str] = set()
     skipped = 0
@@ -195,36 +265,107 @@ class BodyParser(HTMLParser):
     """
 
     _IGNORED = {"script", "style", "nav", "footer", "form", "noscript", "template", "svg"}
+    _BLOCKS = {"p", "br", "div", "li", "blockquote", "h2", "h3", "h4"}
 
-    def __init__(self):
+    def __init__(self, *, primary_tag: str = "article", primary: tuple[str, ...] | None = None,
+                 body: tuple[str, str] | None = None, excluded_classes: frozenset[str] = frozenset(),
+                 excluded_class_prefixes: tuple[str, ...] = ()):
         super().__init__(convert_charrefs=True)
         self.tags: list[str] = []
         self.parts: list[str] = []
         self.published: str | None = None
+        self.primary_tag = primary_tag
+        self.primary = primary
+        self.body = body
+        self.excluded_classes = excluded_classes
+        self.excluded_class_prefixes = excluded_class_prefixes
+        self.primary_seen = False
+        self.body_depth: int | None = None
+        self.excluded_depth: int | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         a = dict(attrs)
         if tag == "meta" and (a.get("property") == "article:published_time" or a.get("name") == "datePublished"):
             self.published = self.published or _date(a.get("content"))
-        if tag != "article" and not self.tags:
-            return
+        if not self.tags:
+            if tag != self.primary_tag:
+                return
+            if self.primary:
+                attribute, *markers = self.primary
+                if (self.primary_seen or not set(markers).intersection((a.get(attribute) or "").split())
+                        or self.excluded_classes.intersection((a.get("class") or "").split())):
+                    return
+                self.primary_seen = True
         if tag not in VOID_TAGS:
             self.tags.append(tag)
-        if tag == "time" and a.get("datetime"):
+        if self.body:
+            attribute, marker = self.body
+            if tag not in VOID_TAGS:
+                classes = (a.get("class") or "").split()
+                if self.excluded_depth is None and (
+                    self.excluded_classes.intersection(classes)
+                    or any(name.startswith(self.excluded_class_prefixes) for name in classes)
+                ):
+                    self.excluded_depth = len(self.tags)
+                if self.body_depth is None and marker in (a.get(attribute) or "").split():
+                    self.body_depth = len(self.tags)
+            properties = (a.get("itemprop") or "").split()
+            if self.body_depth is not None and tag in self._BLOCKS:
+                self.handle_data(" ")
+            if "datePublished" in properties:
+                self.published = self.published or _date(a.get("content") or a.get("datetime"))
+        elif tag == "time" and a.get("datetime"):
             self.published = self.published or _date(a["datetime"])
 
     def handle_data(self, data: str) -> None:
-        if self.tags and not self._IGNORED.intersection(self.tags):
+        if (self.tags and (not self.body or self.body_depth is not None) and self.excluded_depth is None
+                and not self._IGNORED.intersection(self.tags)):
             self.parts.append(data)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in self.tags:
             # Ignore stray/mismatched closing tags rather than corrupting depth.
             del self.tags[len(self.tags) - 1 - self.tags[::-1].index(tag):]
+            if self.body_depth is not None and len(self.tags) < self.body_depth:
+                self.body_depth = None
+            if self.excluded_depth is not None and len(self.tags) < self.excluded_depth:
+                self.excluded_depth = None
 
 
-def extract_body(html_text: str) -> tuple[str | None, str | None]:
-    parser = BodyParser()
+def extract_body(html_text: str, *, source: Source | None = None) -> tuple[str | None, str | None]:
+    source_id = source.source_id if source else None
+    if source_id == "dr-nyheder":
+        # Short-news permalinks include neighboring stories as untyped article nodes.
+        parser = BodyParser(primary=("itemtype", "https://schema.org/NewsArticle"),
+                            body=("itemprop", "articleBody"))
+    elif source_id == "tv2-nyheder":
+        parser = BodyParser(primary=("class", "tc_article__wrapper"),
+                            body=("class", "tc_richcontent"),
+                            excluded_classes=frozenset({"tc_embed", "tc_page__header", "tc_page__footer"}))
+    elif source_id in {"newsmaker-ro", "newsmaker-ru"}:
+        # NewsMaker appends further articles below the one at the requested URL.
+        parser = BodyParser(
+            primary_tag="div", primary=("class", "js-current-article", "big-article"),
+            body=("class", "elementor-widget-theme-post-content"),
+            excluded_classes=frozenset({"js-infinite-scroll-article"}),
+        )
+    elif source_id == "meduza-ru":
+        # The only <article> nodes on some permalinks are recommendation cards.
+        article_content = ("class", "GeneralMaterial-module-article")
+        parser = BodyParser(
+            primary_tag="div", primary=article_content, body=article_content,
+            excluded_classes=frozenset({"RelatedMaterial-module-root", "RelatedList-module-root",
+                                        "ToolbarContainer-module-ad"}),
+            excluded_class_prefixes=("Toolbar-module_", "EmbedBlock-module_"),
+        )
+    elif source_id == "unian-uk":
+        parser = BodyParser(primary_tag="div", primary=("class", "article"),
+                            body=("class", "article-text"))
+    elif source_id == "suspilne-novyny":
+        parser = BodyParser(primary=("class", "post-body"), body=("class", "c-art-c__c"))
+    else:
+        parser = BodyParser()
     parser.feed(html_text)
-    text = " ".join(" ".join(parser.parts).split())
+    separator = "" if parser.body else " "
+    text = " ".join(separator.join(parser.parts).split())
     return (text or None, parser.published)

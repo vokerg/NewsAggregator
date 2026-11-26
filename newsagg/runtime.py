@@ -54,14 +54,25 @@ def make_item(source: Source, candidate: Candidate, now: datetime,
         "body_publication_status": "not_published",  # independent of captured body availability
         "rights_profile": source.rights_profile,
     }
-    validate_public_item(item)
+    local_only = source.rights_profile == "local_only"
+    if local_only and candidate.publisher_description:
+        item["publisher_description"] = candidate.publisher_description
+    _validate_item(item, local_only=local_only)
     return item
 
 
 def validate_public_item(row: dict[str, Any]) -> None:
-    """Fail closed before write and when loading an existing public archive."""
-    if not isinstance(row, dict) or set(row) != ITEM_KEYS or type(row["schema_version"]) is not int or row["schema_version"] != 1:
+    """Validate a row eligible for the public metadata projection."""
+    _validate_item(row, local_only=False)
+
+
+def _validate_item(row: dict[str, Any], *, local_only: bool) -> None:
+    allowed_keys = ITEM_KEYS | {"publisher_description"} if local_only else ITEM_KEYS
+    if (not isinstance(row, dict) or not ITEM_KEYS <= row.keys() <= allowed_keys
+            or type(row["schema_version"]) is not int or row["schema_version"] != 1):
         raise ValidationError("unexpected public item keys or version")
+    if "publisher_description" in row and not check_public_text(row["publisher_description"], max_length=2500):
+        raise ValidationError("invalid episode description")
     original, canonical = require_url(row["original_url"]), require_url(row["canonical_url"])
     if canonical_url(original) != canonical:
         raise ValidationError("canonical URL mismatch")
@@ -79,7 +90,8 @@ def validate_public_item(row: dict[str, Any]) -> None:
     chars = row["body_char_count"]
     if (row["body_extraction_status"] == "extracted" and (type(chars) is not int or chars < 1)) or (row["body_extraction_status"] != "extracted" and chars is not None):
         raise ValidationError("body length inconsistent with extraction")
-    if row["body_publication_status"] != "not_published" or row["rights_profile"] not in {"unknown", "metadata_only", "licensed_text"}:
+    profiles = {"local_only"} if local_only else {"unknown", "metadata_only", "licensed_text"}
+    if row["body_publication_status"] != "not_published" or row["rights_profile"] not in profiles:
         raise ValidationError("unauthorized public body")
     if row["about_country_codes"] != []:  # classification is outside issue #8
         raise ValidationError("unsupported subject classification")
@@ -98,7 +110,7 @@ def _read_json(path: Path, fallback: Any) -> Any:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else fallback
 
 
-def _read_items(path: Path) -> dict[str, dict[str, Any]]:
+def _read_items(path: Path, *, local_only: bool = False) -> dict[str, dict[str, Any]]:
     items = {}
     if not path.exists():
         return items
@@ -106,7 +118,7 @@ def _read_items(path: Path) -> dict[str, dict[str, Any]]:
         if not line.strip():
             raise ValidationError("empty line in public archive")
         row = json.loads(line)
-        validate_public_item(row)
+        _validate_item(row, local_only=local_only)
         if row["item_id"] in items:
             raise ValidationError("duplicate row in existing archive")
         items[row["item_id"]] = row
@@ -137,10 +149,12 @@ def _merge(previous: dict[str, Any] | None, item: dict[str, Any]) -> dict[str, A
     # replace an already captured publication timestamp.
     if merged["published_at"] is None and item["published_at"] is not None:
         merged["published_at"] = item["published_at"]
+    if "publisher_description" in item:
+        merged.setdefault("publisher_description", item["publisher_description"])
     if previous["body_extraction_status"] != "extracted" and item["body_extraction_status"] == "extracted":
         for name in ("body_extraction_status", "body_char_count", "extraction_status"):
             merged[name] = item[name]
-    validate_public_item(merged)
+    _validate_item(merged, local_only=previous["rights_profile"] == "local_only")
     return merged
 
 
@@ -153,6 +167,23 @@ def _source_due(state: dict, source: Source, now: datetime, force: bool) -> bool
     return now >= datetime.fromisoformat(last.replace("Z", "+00:00")) + timedelta(minutes=source.cadence_minutes)
 
 
+def _status(registry: list[Source], sources_status: dict, item_count: int, now: str, timezone_name: str) -> dict:
+    sources = {source.source_id: sources_status[source.source_id] for source in registry if source.enabled}
+    attempted = [row["status"] for row in sources.values() if row["status"] != "idle"]
+    overall = ("idle" if not attempted else "ok" if all(value == "ok" for value in attempted) else
+               "failed" if all(value == "failed" for value in attempted) else "partial")
+    return {"schema_version": 1, "run_at": now, "timezone": timezone_name, "status": overall,
+            "configured_count": len(registry), "enabled_count": len(sources),
+            "total_item_count": item_count, "sources": sources}
+
+
+def _write_items(path: Path, items: dict[str, dict[str, Any]], *, local_only: bool = False) -> None:
+    for item in items.values():
+        _validate_item(item, local_only=local_only)
+    lines = "".join(json.dumps(items[key], ensure_ascii=False, sort_keys=True) + "\n" for key in sorted(items))
+    _atomic(path, lines)
+
+
 def run(registry: list[Source], fetcher, output: Path, *, now: datetime, force: bool = False,
         timezone_name: str = "UTC") -> dict[str, Any]:
     """One source error never halts another; writer lock serializes runs."""
@@ -161,9 +192,20 @@ def run(registry: list[Source], fetcher, output: Path, *, now: datetime, force: 
     with (output / ".collector.lock").open("a+") as lock:
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         archive_path = output / "public" / "items.ndjson"
+        research_path = output / "research" / "items.ndjson"
         state_path = output / "state.json"
         status_path = output / "public" / "status.json"
-        items = _read_items(archive_path)
+        public_items = _read_items(archive_path)
+        research_items = _read_items(research_path, local_only=True)
+        public_registry = [source for source in registry if source.rights_profile != "local_only"]
+        public_sources = {source.source_id for source in public_registry} | {
+            item["source_id"] for item in public_items.values()
+        }
+        research_sources = {source.source_id for source in registry if source.rights_profile == "local_only"} | {
+            item["source_id"] for item in research_items.values()
+        }
+        if public_sources & research_sources:
+            raise ValidationError("source archive policy changed; use a separate output directory")
         state = _read_json(state_path, {"schema_version": 1, "sources": {}})
         if (not isinstance(state, dict) or set(state) != {"schema_version", "sources"}
                 or state["schema_version"] != 1 or not isinstance(state["sources"], dict)):
@@ -180,6 +222,7 @@ def run(registry: list[Source], fetcher, output: Path, *, now: datetime, force: 
         for source in registry:
             if not source.enabled:
                 continue
+            items = research_items if source.rights_profile == "local_only" else public_items
             previous = dict(state["sources"].get(source.source_id, {}))
             if not _source_due(previous, source, now, force):
                 sources_status[source.source_id] = {"status": "idle", "discovered": 0, "extracted": 0, "skipped": 0, "error_code": None}
@@ -198,7 +241,7 @@ def run(registry: list[Source], fetcher, output: Path, *, now: datetime, force: 
                     if source.extract_body:
                         try:
                             _, body = fetcher.get(candidate.original_url, source)
-                            body_text, extracted_published = extract_body(body)
+                            body_text, extracted_published = extract_body(body, source=source)
                             # Metadata extracted from the page is valid even when
                             # no readable article body was found.
                             published = published or extracted_published
@@ -240,19 +283,11 @@ def run(registry: list[Source], fetcher, output: Path, *, now: datetime, force: 
                 previous.update({"last_success_at": now_text, "cursor": cursor})
             state["sources"][source.source_id] = previous
             sources_status[source.source_id] = result
-        attempted = [v["status"] for v in sources_status.values() if v["status"] != "idle"]
-        overall = ("idle" if not attempted else "ok" if all(v == "ok" for v in attempted) else
-                   "failed" if all(v == "failed" for v in attempted) else "partial")
-        status = {"schema_version": 1, "run_at": now_text, "timezone": timezone_name,
-                  "status": overall, "configured_count": len(registry),
-                  "enabled_count": sum(v.enabled for v in registry), "total_item_count": len(items),
-                  "sources": sources_status}
-        # All public writes are strictly allowlisted; validate entire archive before replacing any file.
-        for item in items.values():
-            validate_public_item(item)
-        public_lines = "".join(json.dumps(items[key], ensure_ascii=False, sort_keys=True) + "\n" for key in sorted(items))
         # Archive first, then state: crash between them leaves retryable, deduplicated items.
-        _atomic(archive_path, public_lines)
+        _write_items(archive_path, public_items)
+        if research_items:
+            _write_items(research_path, research_items, local_only=True)
         _atomic(state_path, json.dumps(state, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
-        _atomic(status_path, json.dumps(status, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
-        return status
+        public_status = _status(public_registry, sources_status, len(public_items), now_text, timezone_name)
+        _atomic(status_path, json.dumps(public_status, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        return _status(registry, sources_status, len(public_items) + len(research_items), now_text, timezone_name)

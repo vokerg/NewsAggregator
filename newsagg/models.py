@@ -159,7 +159,7 @@ class Source:
             raise ValidationError("empty display_name")
         if type(data["enabled"]) is not bool or type(data["extract_body"]) is not bool:
             raise ValidationError("enabled and extract_body must be booleans")
-        if data["adapter"] not in ("rss", "web"):
+        if data["adapter"] not in ("rss", "web", "rossiya24-episodes"):
             raise ValidationError("unsupported adapter")
         home, index = require_url(data["canonical_home_url"]), require_url(data["index_url"])
         country = data["publisher_country"]
@@ -177,17 +177,19 @@ class Source:
         for url in (home, index):
             if not any(urlsplit(url).hostname == host or urlsplit(url).hostname.endswith("." + host) for host in hosts):
                 raise ValidationError("configured URL host not allowlisted")
-        for name, low, high in (("cadence_minutes", 5, 10080), ("max_pages", 1, 10), ("max_items", 1, 100)):
-            if type(data[name]) is not int or not low <= data[name] <= high:
-                raise ValidationError(f"{name} outside supported bounds")
+        for field, low, high in (("cadence_minutes", 5, 10080), ("max_pages", 1, 10), ("max_items", 1, 100)):
+            if type(data[field]) is not int or not low <= data[field] <= high:
+                raise ValidationError(f"{field} outside supported bounds")
         tag = data["item_tag"]
         if not isinstance(tag, str) or not re.fullmatch(r"[a-z][a-z0-9-]{0,24}", tag):
             raise ValidationError("invalid item_tag")
         prefix = data["link_path_prefix"]
         if not isinstance(prefix, str) or not prefix.startswith("/") or ".." in prefix or len(prefix) > 100:
             raise ValidationError("invalid link_path_prefix")
-        if data["rights_profile"] not in ("unknown", "metadata_only", "licensed_text"):
+        if data["rights_profile"] not in ("unknown", "metadata_only", "licensed_text", "local_only"):
             raise ValidationError("invalid rights_profile")
+        if data["adapter"] == "rossiya24-episodes" and data["rights_profile"] != "local_only":
+            raise ValidationError("Rossiya 24 episode records require local_only rights")
         return cls(sid, name, data["enabled"], home, index, data["adapter"], country, langs,
                    perspectives, tuple(labels), hosts, data["cadence_minutes"], data["max_pages"],
                    data["max_items"], data["extract_body"], tag, prefix, data["rights_profile"])
