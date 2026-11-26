@@ -1,6 +1,6 @@
 # NewsAggregator — agent operating contract
 
-This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. **A fixture-tested, opt-in Python source-collection foundation (#8), Angular shell (#1), and synthetic-fixture reader (#2) exist, but no real sources are enabled or live-tested; no production collector schedule, LLM service, deployed website, production dataset, or automated source has been implemented.** Do not claim otherwise.
+This is a documentation-first bootstrap of a public, perspective-aware personal news aggregator. The opt-in Python collector supports the sources listed in `config/sources.json`. Rossiya 24 episode records go to the local research archive. The Angular shell (#1) and reader (#2) use synthetic fixtures. Production scheduling, dataset publication, website deployment and the LLM service are pending.
 
 ## Mandatory context
 
