@@ -25,9 +25,17 @@ export interface NewsItem {
 /** Compact, archive-wide discovery metadata, never rendered as an article. */
 export type DiscoveryItem = Pick<
   NewsItem,
-  | "id" | "source_id" | "source_name" | "published_at" | "first_seen_at"
-  | "perspective_ids" | "about_country_codes" | "language" | "publisher_country"
-  | "editorial_labels" | "tags"
+  | "id"
+  | "source_id"
+  | "source_name"
+  | "published_at"
+  | "first_seen_at"
+  | "perspective_ids"
+  | "about_country_codes"
+  | "language"
+  | "publisher_country"
+  | "editorial_labels"
+  | "tags"
 >;
 
 export interface NewsCatalog {

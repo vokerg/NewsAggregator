@@ -176,7 +176,10 @@ const FACET_KEYS: readonly FacetKey[] = [
   "editorial",
 ];
 
-function valuesFor(item: DiscoveryItem, key: FacetKey): readonly FilterOption[] {
+function valuesFor(
+  item: DiscoveryItem,
+  key: FacetKey,
+): readonly FilterOption[] {
   switch (key) {
     case "view":
       return item.perspective_ids.map((value) => ({ value, label: value }));

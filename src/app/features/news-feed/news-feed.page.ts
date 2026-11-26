@@ -78,10 +78,16 @@ export class NewsFeedPage {
       .pipe(
         map((params) => {
           const raw = params.get("catalogPage") ?? "1";
-          const page = /^[1-9][0-9]{0,3}$/.test(raw) ? Math.min(Number(raw), 2000) - 1 : 0;
+          const page = /^[1-9][0-9]{0,3}$/.test(raw)
+            ? Math.min(Number(raw), 2000) - 1
+            : 0;
           return { page, filters: readFeedFilters(params) };
         }),
-        distinctUntilChanged((a, b) => a.page === b.page && JSON.stringify(a.filters) === JSON.stringify(b.filters)),
+        distinctUntilChanged(
+          (a, b) =>
+            a.page === b.page &&
+            JSON.stringify(a.filters) === JSON.stringify(b.filters),
+        ),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(({ page }) => {

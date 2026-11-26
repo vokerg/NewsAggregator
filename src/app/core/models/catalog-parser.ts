@@ -15,8 +15,13 @@ const DISCOVERY_KEYS = [
   "first_seen_at",
   "perspective_ids",
   "about_country_codes",
- ];
-const ITEM_KEYS = [...DISCOVERY_KEYS, "title", "original_url", "extraction_status"];
+];
+const ITEM_KEYS = [
+  ...DISCOVERY_KEYS,
+  "title",
+  "original_url",
+  "extraction_status",
+];
 
 // Catalogs are temporary bounded pages, not a substitute for the archive.
 // Large, partitioned read models will get their own schema in issue #4.
@@ -149,15 +154,23 @@ function hasDiscoveryFields(value: Record<string, unknown>): boolean {
 }
 
 export function isDiscoveryItem(value: unknown): value is DiscoveryItem {
-  return isRecord(value) && DISCOVERY_KEYS.every((key) => Object.hasOwn(value, key)) &&
-    Object.keys(value).every((key) => [...DISCOVERY_KEYS, ...OPTIONAL_ITEM_KEYS].includes(key)) &&
-    hasDiscoveryFields(value);
+  return (
+    isRecord(value) &&
+    DISCOVERY_KEYS.every((key) => Object.hasOwn(value, key)) &&
+    Object.keys(value).every((key) =>
+      [...DISCOVERY_KEYS, ...OPTIONAL_ITEM_KEYS].includes(key),
+    ) &&
+    hasDiscoveryFields(value)
+  );
 }
 
 function isNewsItem(value: unknown): value is NewsItem {
   return (
-    isRecord(value) && ITEM_KEYS.every((key) => Object.hasOwn(value, key)) &&
-    Object.keys(value).every((key) => [...ITEM_KEYS, ...OPTIONAL_ITEM_KEYS].includes(key)) &&
+    isRecord(value) &&
+    ITEM_KEYS.every((key) => Object.hasOwn(value, key)) &&
+    Object.keys(value).every((key) =>
+      [...ITEM_KEYS, ...OPTIONAL_ITEM_KEYS].includes(key),
+    ) &&
     hasDiscoveryFields(value) &&
     isPublicText(value["title"], 500) &&
     isSafePublisherUrl(value["original_url"]) &&
