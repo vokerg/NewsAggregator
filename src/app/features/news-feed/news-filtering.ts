@@ -1,5 +1,5 @@
 import { ParamMap, Params } from "@angular/router";
-import { NewsItem } from "../../core/models/news";
+import { DiscoveryItem } from "../../core/models/news";
 
 /** A separate unknown selection avoids mistaking missing classifications for a country. */
 export const UNKNOWN_FILTER_VALUE = "~unknown";
@@ -125,10 +125,10 @@ function matches(value: string, classifications: readonly string[]): boolean {
 }
 
 /** Dates use publication time when known; otherwise first-seen. All days are UTC. */
-export function filterNews(
-  items: readonly NewsItem[],
+export function filterNews<T extends DiscoveryItem>(
+  items: readonly T[],
   filters: FeedFilters,
-): readonly NewsItem[] {
+): readonly T[] {
   const filtered = items.filter((item) => {
     const day = new Date(item.published_at ?? item.first_seen_at)
       .toISOString()
@@ -176,7 +176,7 @@ const FACET_KEYS: readonly FacetKey[] = [
   "editorial",
 ];
 
-function valuesFor(item: NewsItem, key: FacetKey): readonly FilterOption[] {
+function valuesFor(item: DiscoveryItem, key: FacetKey): readonly FilterOption[] {
   switch (key) {
     case "view":
       return item.perspective_ids.map((value) => ({ value, label: value }));
@@ -204,7 +204,7 @@ function valuesFor(item: NewsItem, key: FacetKey): readonly FilterOption[] {
 
 /** Options are derived from the full current catalog, never from guessed labels. */
 export function buildFilterOptions(
-  items: readonly NewsItem[],
+  items: readonly DiscoveryItem[],
   filters: FeedFilters,
 ): FilterOptions {
   const options = {} as Record<FacetKey, readonly FilterOption[]>;

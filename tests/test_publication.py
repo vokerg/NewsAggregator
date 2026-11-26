@@ -141,11 +141,37 @@ class PublisherTests(unittest.TestCase):
         status_path.write_text(json.dumps(status), encoding="utf-8")
         result = publish(self.archive, REGISTRY, self.output, status=status_path)
         self.assertEqual(result["coverage_status"], "partial")
+        self.assertNotEqual(result["revision"], publish(self.archive, REGISTRY, self.output)["revision"])
+        publish(self.archive, REGISTRY, self.output, status=status_path)
         status["total_item_count"] = 2
         status_path.write_text(json.dumps(status), encoding="utf-8")
         with self.assertRaises(ValidationError):
             publish(self.archive, REGISTRY, self.output, status=status_path)
         self.assertEqual(self.load(self.output / "manifest.json")["coverage_status"], "partial")
+
+    def test_reader_contract_rejects_invalid_metadata_and_encoded_fragment(self):
+        for field, value in (("language", "invalid"), ("editorial_labels_at_capture", ["x", "x"]),
+                             ("perspective_ids_at_capture", [""])):
+            with self.subTest(field=field):
+                row = self.row(8)
+                row[field] = value
+                self.write([row])
+                with self.assertRaises(ValidationError):
+                    publish(self.archive, REGISTRY, self.output)
+        row = self.row(9)
+        row["original_url"] += "#section%3Fsession_id%3Dplaceholder"
+        self.write([row])
+        with self.assertRaises(ValidationError):
+            publish(self.archive, REGISTRY, self.output)
+
+    def test_search_index_covers_all_dates_without_article_content(self):
+        rows = [self.row(9), self.row(10, published="2026-11-17T00:00:00Z")]
+        self.write(rows)
+        result = publish(self.archive, REGISTRY, self.output)
+        search = self.load(self.output / "search.json")
+        self.assertEqual(search["revision"], result["revision"])
+        self.assertEqual({r["id"] for r in search["rows"]}, {r["item_id"] for r in rows})
+        self.assertTrue(all("title" not in r and "original_url" not in r for r in search["rows"]))
 
     def test_empty_archive_is_explicit_not_fixture_fallback(self):
         self.write([])

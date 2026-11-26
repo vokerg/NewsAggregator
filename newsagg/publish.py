@@ -15,9 +15,9 @@ import shutil
 import sys
 import tempfile
 from uuid import uuid4
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, unquote, parse_qsl
 
-from .models import ValidationError, load_registry, parse_timestamp
+from .models import ValidationError, load_registry, parse_timestamp, check_public_text, _has_sensitive_query_name
 from .runtime import ERROR_CODES, SOURCE_STATES, validate_public_item
 
 PAGE_SIZE = 100
@@ -67,6 +67,42 @@ def _public_item(row: dict, sources: dict) -> dict:
     }
     if row["publisher_country"] is not None:
         item["publisher_country"] = row["publisher_country"]
+    # Match the reader's public schema, including UTF-16 length bounds.
+    def text(value: str, maximum: int) -> None:
+        if (not isinstance(value, str) or not value or value.strip() != value
+                or len(value.encode("utf-16-le")) // 2 > maximum
+                or any(ord(c) == 127 for c in value)):
+            raise ValidationError("invalid reader text")
+        check_public_text(value, maximum)
+    for field, maximum in (("id", 128), ("source_id", 128), ("source_name", 120),
+                           ("title", 500), ("original_url", 2048)):
+        text(item[field], maximum)
+    if not re.fullmatch(r"[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*", item["language"]):
+        raise ValidationError("invalid reader language")
+    if "publisher_country" in item and not re.fullmatch(r"[A-Z]{2}", item["publisher_country"]):
+        raise ValidationError("invalid reader country")
+    for field in ("perspective_ids", "about_country_codes", "editorial_labels"):
+        values = item[field]
+        if len(values) > 50 or len(set(values)) != len(values):
+            raise ValidationError("invalid reader classification array")
+        for value in values:
+            text(value, 128)
+            if value == "~unknown":
+                raise ValidationError("reserved filter value")
+    original = item["original_url"]
+    if any(c.isspace() or c == "\\" for c in original):
+        raise ValidationError("ambiguous public URL")
+    parsed = urlsplit(original)
+    if not re.fullmatch(r"[a-z0-9-]+(?:\.[a-z0-9-]+)+", parsed.hostname or ""):
+        raise ValidationError("invalid reader hostname")
+    if re.fullmatch(r"\d+(?:\.\d+){3}", parsed.hostname or "") or parsed.hostname.endswith((".localhost", ".local", ".internal")):
+        raise ValidationError("non-publisher hostname")
+    if re.search(r"%(?![0-9a-fA-F]{2})", parsed.fragment):
+        raise ValidationError("malformed URL fragment")
+    fragment = unquote(parsed.fragment, errors="strict")
+    for part in re.split(r"[?&#]", fragment):
+        if "=" in part and _has_sensitive_query_name(part.split("=", 1)[0]):
+            raise ValidationError("credential-bearing URL fragment")
     return item
 
 
@@ -147,7 +183,8 @@ def publish(archive: Path, registry: Path, output: Path, *, status: Path | None 
     for item in items:
         by_day[(item["published_at"] or item["first_seen_at"])[:10]].append(item)
     # Revision is content-addressed, not a wall-clock publishing timestamp.
-    payload = _json(items).encode("utf-8")
+    payload = _json({"format": 2, "page_size": PAGE_SIZE, "items": items,
+                     "coverage_status": coverage_status}).encode("utf-8")
     revision = "data-" + hashlib.sha256(payload).hexdigest()[:24]
     pages: list[dict] = []
     for day in sorted(by_day, reverse=True):
@@ -165,13 +202,20 @@ def publish(archive: Path, registry: Path, output: Path, *, status: Path | None 
         raise ValidationError("unsafe output symlink")
     output = output.resolve()
     if (output == Path(output.anchor) or archive.resolve().is_relative_to(output)
-            or registry.resolve().is_relative_to(output)):
+            or registry.resolve().is_relative_to(output)
+            or (status is not None and status.resolve().is_relative_to(output))):
         raise ValidationError("unsafe output location")
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".catalog-stage-", dir=output.parent) as stage:
         root = Path(stage) / "catalog"
         root.mkdir()
         _write(root, "manifest.json", manifest)
+        # Compact discovery index: no headlines, URLs, or article text.
+        search_fields = ("id", "source_id", "source_name", "published_at", "first_seen_at",
+                         "perspective_ids", "about_country_codes", "language", "publisher_country",
+                         "editorial_labels", "tags")
+        search_rows = [{key: item[key] for key in search_fields if key in item} for item in items]
+        _write(root, "search.json", {"schema_version": 2, "revision": revision, "rows": search_rows})
         for page in pages:
             day, part = page["day"], page["part"]
             offset = (part - 1) * PAGE_SIZE
