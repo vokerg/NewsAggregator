@@ -23,6 +23,17 @@ describe("PWA status", () => {
     fixture.destroy();
   });
 
+  it("discloses possible cached news even while online", () => {
+    TestBed.configureTestingModule({ imports: [PwaStatus] });
+    const fixture = TestBed.createComponent(PwaStatus);
+    window.dispatchEvent(new Event("online"));
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain("News may be cached");
+    expect(root.textContent).toContain("Refresh news");
+    fixture.destroy();
+  });
+
   it("shows a reload action only when a new worker version is ready", () => {
     const versions = new Subject<VersionEvent>();
     const unrecoverable = new Subject<{ reason: string }>();

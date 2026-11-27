@@ -4,6 +4,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const zlib = require("node:zlib");
 
 const config = JSON.parse(fs.readFileSync("ngsw-config.json", "utf8"));
 const manifest = JSON.parse(
@@ -41,6 +42,33 @@ for (const size of [192, 512]) {
   assert.equal(bytes.toString("hex", 0, 8), "89504e470d0a1a0a", "PNG signature");
   assert.equal(bytes.readUInt32BE(16), size, "PNG width");
   assert.equal(bytes.readUInt32BE(20), size, "PNG height");
+  let offset = 8;
+  const compressed = [];
+  let ended = false;
+  while (offset + 12 <= bytes.length) {
+    const length = bytes.readUInt32BE(offset);
+    const end = offset + 8 + length;
+    assert(end + 4 <= bytes.length, "Truncated PNG chunk");
+    const type = bytes.toString("ascii", offset + 4, offset + 8);
+    let crc = 0xffffffff;
+    for (const byte of bytes.subarray(offset + 4, end)) {
+      crc ^= byte;
+      for (let bit = 0; bit < 8; bit++) {
+        crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+      }
+    }
+    assert.equal((crc ^ 0xffffffff) >>> 0, bytes.readUInt32BE(end), "PNG CRC");
+    if (type === "IDAT") compressed.push(bytes.subarray(offset + 8, end));
+    offset = end + 4;
+    if (type === "IEND") {
+      ended = true;
+      break;
+    }
+  }
+  assert(ended && offset === bytes.length, "Complete PNG required");
+  assert.equal(bytes[24], 1, "Expected indexed one-bit icon");
+  assert.equal(bytes[25], 3, "Expected indexed color");
+  assert.equal(zlib.inflateSync(Buffer.concat(compressed)).length, size * (size / 8 + 1));
 }
 const dist = process.argv[2];
 if (dist) {

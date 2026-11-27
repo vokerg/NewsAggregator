@@ -196,3 +196,12 @@ deployed Pages configuration, offline navigation and viewport behavior
 must still be checked in browsers before claiming that production installability
 or accessible behavior is proven. Browser HTTP "online" status is only a
 connectivity hint; a failed network request still displays the retry UI.
+
+### Pre-merge PWA review corrections
+
+The icons were regenerated after a binary integrity defect was found; CI now
+checks every PNG chunk CRC, the end marker and decompressed pixel length.
+The shell explicitly discloses possible cached news even when online and offers
+an explicit refresh action that reloads the current route and revalidates the
+catalog pointer. There is no automatic background polling. Browser/device
+verification is deferred by request; the issue remains open for that work.
