@@ -1,6 +1,6 @@
 # Frontend architecture decision — Angular / responsive / PWA
 
-**Decision accepted 2026-11-18. Foundation scaffold implemented for #1 and synthetic-fixture reader for #2 (2026-11-22).** Angular shell, read-only static catalog fixture, lazy route and unit/CI configuration exist. **No deployed website, real news feed, installable PWA or live browser/device verification exists yet.**
+**Decision accepted 2026-11-18. Foundation scaffold implemented for #1 and synthetic-fixture reader for #2 (2026-11-22).** Angular shell, read-only static catalog fixture, lazy route and unit/CI configuration exist. **The PWA production build is configured (#5), but the hosted site, installability on devices, actual offline behavior, and live browser/device verification have not been established.**
 
 ## Product intent
 
@@ -89,7 +89,7 @@ Build output and Pages deployment are separate evidence: a passing compile does 
 - Semantic headings, real buttons/links, keyboard focus, accessible labels, reduced-motion preference, readable contrast, skeleton or stable loading layout and error/empty/offline states.
 - Internationalized strings and original-language titles, Unicode support, proper timestamps, and future translations are separate derivative data, never overwrite the original.
 
-## PWA roadmap (target, not done)
+## PWA design contract and remaining verification
 
 Use Angular's first-party service worker (usually added with `ng add @angular/pwa`) only after the base app exists. Require a manifest, HTTPS deployment, complete real icon assets (not placeholders), installability checks on Android/iOS where supported and a clear update UX. Cache the app shell and bounded permitted resources; **do not silently freeze daily news** by treating commit-generated catalogs as immutable shell assets. Define network-first/freshness strategy and cache-size/retention policy for manifest and daily partitions; audit offline coverage accurately. Service workers are production concerns, not a shortcut for native apps.
 
