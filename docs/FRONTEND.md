@@ -203,5 +203,6 @@ The icons were regenerated after a binary integrity defect was found; CI now
 checks every PNG chunk CRC, the end marker and decompressed pixel length.
 The shell explicitly discloses possible cached news even when online and offers
 an explicit refresh action that reloads the current route and revalidates the
-catalog pointer. There is no automatic background polling. Browser/device
+catalog pointer. The open feed also revalidates on window focus and reconnect,
+without interrupting a pending load. There is no automatic background polling. Browser/device
 verification is deferred by request; the issue remains open for that work.
