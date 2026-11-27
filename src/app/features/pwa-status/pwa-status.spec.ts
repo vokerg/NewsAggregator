@@ -13,12 +13,13 @@ describe("PWA status", () => {
     window.dispatchEvent(new Event("offline"));
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.textContent).toContain("uncached articles will not load");
-    expect(root.querySelector('[role="status"]')).not.toBeNull();
+    const notice = root.querySelector(".offline-notice") as HTMLElement;
+    expect(notice.hidden).toBe(false);
+    expect(notice.textContent).toContain("uncached articles will not load");
 
     window.dispatchEvent(new Event("online"));
     fixture.detectChanges();
-    expect(root.textContent).not.toContain("uncached articles");
+    expect(notice.hidden).toBe(true);
     fixture.destroy();
   });
 
@@ -41,14 +42,15 @@ describe("PWA status", () => {
     const fixture = TestBed.createComponent(PwaStatus);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector("button")).toBeNull();
+    const notice = root.querySelector(".update-notice") as HTMLElement;
+    expect(notice.hidden).toBe(true);
 
     versions.next({
       type: "VERSION_DETECTED",
       version: { hash: "next" },
     });
     fixture.detectChanges();
-    expect(root.querySelector("button")).toBeNull();
+    expect(notice.hidden).toBe(true);
 
     versions.next({
       type: "VERSION_READY",
@@ -56,8 +58,8 @@ describe("PWA status", () => {
       latestVersion: { hash: "next" },
     });
     fixture.detectChanges();
-    expect(root.textContent).toContain("newer version");
-    expect(root.querySelector("button")?.textContent).toContain("Reload");
+    expect(notice.hidden).toBe(false);
+    expect(notice.querySelector("button")?.textContent).toContain("Reload");
     fixture.destroy();
   });
 
@@ -82,9 +84,9 @@ describe("PWA status", () => {
     broken.next({ reason: "a cached file is missing" });
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelector('[role="alert"]')?.textContent).toContain(
-      "offline cache cannot be recovered",
-    );
+    const notice = root.querySelector(".broken-notice") as HTMLElement;
+    expect(notice.hidden).toBe(false);
+    expect(notice.textContent).toContain("offline cache cannot be recovered");
     fixture.destroy();
   });
 });

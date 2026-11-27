@@ -1,16 +1,12 @@
-@if (offline()) {
-  <div class="notice" role="status">
-    <strong>Offline.</strong> News may be out of date. Only previously cached
-    pages might be available; uncached articles will not load.
-  </div>
-} @if (updateReady()) {
-  <div class="notice" role="status">
-    <span>A newer version of NewsAggregator is ready.</span>
-    <button type="button" (click)="refresh()">Reload to update</button>
-  </div>
-} @if (unrecoverable()) {
-  <div class="notice" role="alert">
-    <span>The offline cache cannot be recovered. Reload when connected.</span>
-    <button type="button" (click)="refresh()">Reload app</button>
-  </div>
-}
+<div class="notice offline-notice" role="status" [hidden]="!offline()">
+  <strong>Offline.</strong> News may be out of date. Only previously cached
+  pages might be available; uncached articles will not load.
+</div>
+<div class="notice update-notice" role="status" [hidden]="!updateReady()">
+  <span>A newer version of NewsAggregator is ready.</span>
+  <button type="button" (click)="refresh()">Reload to update</button>
+</div>
+<div class="notice broken-notice" role="alert" [hidden]="!unrecoverable()">
+  <span>The offline cache cannot be recovered. Reload when connected.</span>
+  <button type="button" (click)="refresh()">Reload app</button>
+</div>

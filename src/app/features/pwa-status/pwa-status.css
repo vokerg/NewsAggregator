@@ -15,6 +15,10 @@
   text-align: center;
 }
 
+.notice[hidden] {
+  display: none;
+}
+
 .notice button {
   min-height: 2.75rem;
   border: 1px solid var(--color-border);
