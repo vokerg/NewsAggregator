@@ -115,3 +115,35 @@ fixtures and the actual release catalog with the browser parsers, then gates
 main-only upload/deployment on successful tests and artifact validation.
 The compact index is downloaded as a single bounded file, not an unbounded raw
 archive; further index sharding can be evaluated as the archive grows.
+
+
+## 2026-11-27 — issue #5: PWA cache and update decision (PR #20)
+
+**Decision:** adopt the Angular 22 service worker with a prefetched application
+shell and **network-first** public catalog groups rather than cache-first
+news data. The revisioned catalog manifest is bounded to one cached response
+with a maximum age of 1 hour; discovery/partition/item metadata uses a
+120-entry LRU with maximum age 1 day. Both groups wait at most 5 seconds for
+the network before serving previously downloaded data; neither prefetches
+the archive. Browser connectivity warnings are intentionally best-effort,
+and missing offline records still fail via the existing retryable reader UI.
+A detected application update triggers a full-page reload prompt, avoiding
+mixing old application code with new lazy bundles.
+
+**Observed verification:** GitHub Actions on PR #20, head
+`d3547fc6281ffe1c9156cddf1ecc907798363ac2`:
+[frontend checks](https://github.com/vokerg/NewsAggregator/actions/runs/45950359442)
+passed format, lint, npm audit, **57 Angular unit tests** (including 3 new
+offline/update notices tests), PWA config checks and Pages-path production
+build; [validated static release](https://github.com/vokerg/NewsAggregator/actions/runs/45950359448)
+passed both synthetic and generated v2 catalog build/rights checks and
+verified compiled service-worker URL patterns against the Pages subpath;
+[collector foundation](https://github.com/vokerg/NewsAggregator/actions/runs/45950359504)
+passed its offline tests and fixture ingestion. This is build/CI evidence,
+not a device or production installability test.
+
+**Outstanding:** physical viewport/keyboard/assistive-tech evaluation,
+real HTTPS installation on desktop/iOS/Android, online/offline update
+transitions with actual service-worker lifecycle, Pages hosting/settings and
+live publish/revision propagation. No live publisher data was collected or
+published as part of this issue.

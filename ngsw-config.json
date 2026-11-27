@@ -1,0 +1,48 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "app-shell",
+      "installMode": "prefetch",
+      "resources": {
+        "files": ["/index.html", "/*.css", "/*.js"]
+      }
+    },
+    {
+      "name": "icons",
+      "installMode": "lazy",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": ["/manifest.webmanifest", "/favicon.svg", "/icons/*.png"]
+      }
+    }
+  ],
+  "dataGroups": [
+    {
+      "name": "catalog-pointer",
+      "urls": ["/catalog/manifest.json"],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 1,
+        "maxAge": "1h",
+        "timeout": "5s"
+      }
+    },
+    {
+      "name": "catalog-pages",
+      "urls": [
+        "/catalog/search.json",
+        "/catalog/days/**",
+        "/catalog/metadata/**",
+        "/catalog/items/**"
+      ],
+      "cacheConfig": {
+        "strategy": "freshness",
+        "maxSize": 120,
+        "maxAge": "1d",
+        "timeout": "5s"
+      }
+    }
+  ]
+}

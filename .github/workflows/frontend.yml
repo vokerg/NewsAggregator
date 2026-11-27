@@ -27,11 +27,14 @@ jobs:
         run: npm run lint
       - name: Unit tests
         run: npm run test:ci
+      - name: PWA cache and manifest contract
+        run: npm run test:pwa
       - name: Production build for GitHub Pages subpath
         run: npm run build:pages
       - name: Check generated base URL and static fixture
         shell: bash
         run: |
+          node scripts/test-pwa-config.cjs dist/news-aggregator/browser
           test -f dist/news-aggregator/browser/index.html
           grep -q '<base href="/NewsAggregator/">' dist/news-aggregator/browser/index.html
           test -f dist/news-aggregator/browser/catalog/manifest.json

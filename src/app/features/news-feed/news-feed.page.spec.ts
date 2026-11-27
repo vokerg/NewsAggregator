@@ -39,6 +39,27 @@ describe("NewsFeedPage", () => {
     http.verify();
   });
 
+  it("revalidates the open feed on focus and reconnect", () => {
+    const { fixture, http, request } = setup();
+    request().flush({ schema_version: 1, revision: "old", items: [] });
+    window.dispatchEvent(new Event("focus"));
+    const next = request();
+    window.dispatchEvent(new Event("online"));
+    http.expectNone((req) => req.url.endsWith("/catalog/manifest.json"));
+    next.flush({ schema_version: 1, revision: "new", items: [] });
+    expect(fixture.componentInstance.state()).toMatchObject({
+      kind: "ready",
+      revision: "new",
+    });
+    window.dispatchEvent(new Event("online"));
+    request().flush({ schema_version: 1, revision: "latest", items: [] });
+    expect(fixture.componentInstance.state()).toMatchObject({
+      kind: "ready",
+      revision: "latest",
+    });
+    http.verify();
+  });
+
   it("renders the genuine empty state for an empty catalog", async () => {
     const { fixture, http, request } = setup();
     expect(fixture.nativeElement.textContent).toContain("Loading news catalog");

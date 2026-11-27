@@ -41,6 +41,10 @@ type FeedState =
 @Component({
   selector: "app-news-feed",
   imports: [NewsCard, NewsFiltersPanel],
+  host: {
+    "(window:focus)": "refreshOnReturn()",
+    "(window:online)": "refreshOnReturn()",
+  },
   templateUrl: "./news-feed.page.html",
   styleUrl: "./news-feed.page.css",
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -112,6 +116,11 @@ export class NewsFeedPage {
       queryParamsHandling: "merge",
       replaceUrl: true,
     });
+  }
+
+  refreshOnReturn(): void {
+    // Revalidate after returning to the app or reconnecting, without polling.
+    if (this.state().kind !== "loading") this.reload();
   }
 
   reload(): void {

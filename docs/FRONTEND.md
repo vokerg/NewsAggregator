@@ -1,6 +1,6 @@
 # Frontend architecture decision — Angular / responsive / PWA
 
-**Decision accepted 2026-11-18. Foundation scaffold implemented for #1 and synthetic-fixture reader for #2 (2026-11-22).** Angular shell, read-only static catalog fixture, lazy route and unit/CI configuration exist. **No deployed website, real news feed, installable PWA or live browser/device verification exists yet.**
+**Decision accepted 2026-11-18. Foundation scaffold implemented for #1 and synthetic-fixture reader for #2 (2026-11-22).** Angular shell, read-only static catalog fixture, lazy route and unit/CI configuration exist. **The PWA production build is configured (#5), but the hosted site, installability on devices, actual offline behavior, and live browser/device verification have not been established.**
 
 ## Product intent
 
@@ -89,7 +89,7 @@ Build output and Pages deployment are separate evidence: a passing compile does 
 - Semantic headings, real buttons/links, keyboard focus, accessible labels, reduced-motion preference, readable contrast, skeleton or stable loading layout and error/empty/offline states.
 - Internationalized strings and original-language titles, Unicode support, proper timestamps, and future translations are separate derivative data, never overwrite the original.
 
-## PWA roadmap (target, not done)
+## PWA design contract and remaining verification
 
 Use Angular's first-party service worker (usually added with `ng add @angular/pwa`) only after the base app exists. Require a manifest, HTTPS deployment, complete real icon assets (not placeholders), installability checks on Android/iOS where supported and a clear update UX. Cache the app shell and bounded permitted resources; **do not silently freeze daily news** by treating commit-generated catalogs as immutable shell assets. Define network-first/freshness strategy and cache-size/retention policy for manifest and daily partitions; audit offline coverage accurately. Service workers are production concerns, not a shortcut for native apps.
 
@@ -171,3 +171,38 @@ fixtures and the actual release catalog with the browser parsers, then gates
 main-only upload/deployment on successful tests and artifact validation.
 The compact index is downloaded as a single bounded file, not an unbounded raw
 archive; further index sharding can be evaluated as the archive grows.
+
+## Installable PWA implementation — issue #5 (2026-11-27)
+
+The production-only Angular service worker caches the **app shell**, with icons
+lazily cached, while public catalog paths use **bounded network-first** data
+groups. The catalog pointer (manifest) has a 1-hour maximum cache age and the
+search/partition/item family uses a 120-entry LRU cache with a 1-day maximum
+age; both retry the live network first with a five-second timeout before
+falling back to previously cached content. The UI explicitly warns when
+offline and never claims an uncached article is available. The installation
+manifest uses the Pages project subpath with hash navigation. Browser-controlled
+service-worker version detection prompts for a full reload rather than
+activating new application code inside the old running session. An unrecoverable
+cache event also requests a reload.
+
+The PNG icons are project-created graphic assets (not publisher logos).
+The release jobs validate their real dimensions and check the emitted
+ngsw.json, worker, icon assets, and configured catalog cache strategy.
+Run `npm run test:pwa` to validate configuration without a browser. The
+Angular unit tests cover update, unrecoverable and online/offline UI events.
+Actual install prompts, WebKit/Chrome installation, physical devices,
+deployed Pages configuration, offline navigation and viewport behavior
+must still be checked in browsers before claiming that production installability
+or accessible behavior is proven. Browser HTTP "online" status is only a
+connectivity hint; a failed network request still displays the retry UI.
+
+### Pre-merge PWA review corrections
+
+The icons were regenerated after a binary integrity defect was found; CI now
+checks every PNG chunk CRC, the end marker and decompressed pixel length.
+The shell explicitly discloses possible cached news even when online and offers
+an explicit refresh action that reloads the current route and revalidates the
+catalog pointer. The open feed also revalidates on window focus and reconnect,
+without interrupting a pending load. There is no automatic background polling. Browser/device
+verification is deferred by request; the issue remains open for that work.

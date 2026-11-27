@@ -1,0 +1,19 @@
+<div class="notice offline-notice" role="status" [hidden]="!offline()">
+  <strong>Offline.</strong> News may be out of date. Only previously cached
+  pages might be available; uncached articles will not load.
+</div>
+<div class="notice" [hidden]="offline()">
+  <span>
+    News may be cached if the server is unreachable. Refresh to check for new
+    news.
+  </span>
+  <button type="button" (click)="refresh()">Refresh news</button>
+</div>
+<div class="notice update-notice" role="status" [hidden]="!updateReady()">
+  <span>A newer version of NewsAggregator is ready.</span>
+  <button type="button" (click)="refresh()">Reload to update</button>
+</div>
+<div class="notice broken-notice" role="alert" [hidden]="!unrecoverable()">
+  <span>The offline cache cannot be recovered. Reload when connected.</span>
+  <button type="button" (click)="refresh()">Reload app</button>
+</div>
