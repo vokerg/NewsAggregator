@@ -153,3 +153,25 @@ fixtures and the actual release catalog with the browser parsers, then gates
 main-only upload/deployment on successful tests and artifact validation.
 The compact index is downloaded as a single bounded file, not an unbounded raw
 archive; further index sharding can be evaluated as the archive grows.
+
+## PWA build and offline policy (issue #5)
+
+The production build includes Angular's service worker, installation manifest
+and project-created PNG icons. In HTTPS contexts (including Pages, once
+deployed), it precaches the application shell but does not eagerly cache the
+news archive. Catalog JSON uses a bounded **network-first** policy: fresh
+requests win; prior downloads can be fallback data offline. The UI marks
+offline connectivity and prompts for reload if a new application version
+is ready. Individual article bodies are never promised offline unless
+previously requested and retained in the cache.
+
+~~~bash
+npm ci
+npm run test:pwa
+npm run test:ci
+npm run build:pages
+node scripts/test-pwa-config.cjs dist/news-aggregator/browser
+~~~
+
+This does not prove installation or up-to-date content on real devices, nor
+does it confirm live GitHub Pages deployment. Check those on an HTTPS release.

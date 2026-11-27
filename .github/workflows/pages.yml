@@ -37,6 +37,7 @@ jobs:
           npm run format:check
           npm run lint
           npm run test:ci
+          npm run test:pwa
       - name: Exercise real producer-to-browser v2 contract
         shell: bash
         run: |
@@ -46,6 +47,7 @@ jobs:
           mv public/catalog "$RUNNER_TEMP/catalog-demo"
           cp -a "$RUNNER_TEMP/catalog-v2" public/catalog
           npm run build:pages
+          node scripts/test-pwa-config.cjs dist/news-aggregator/browser
           node scripts/validate-catalog.cjs dist/news-aggregator/browser/catalog
           diff -r public/catalog dist/news-aggregator/browser/catalog
           grep -q '<base href="/NewsAggregator/">' dist/news-aggregator/browser/index.html
@@ -65,6 +67,7 @@ jobs:
           fi
           node scripts/validate-catalog.cjs public/catalog
           npm run build:pages
+          node scripts/test-pwa-config.cjs dist/news-aggregator/browser
           node scripts/validate-catalog.cjs dist/news-aggregator/browser/catalog
           diff -r public/catalog dist/news-aggregator/browser/catalog
           grep -q '<base href="/NewsAggregator/">' dist/news-aggregator/browser/index.html

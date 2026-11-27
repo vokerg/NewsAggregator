@@ -171,3 +171,28 @@ fixtures and the actual release catalog with the browser parsers, then gates
 main-only upload/deployment on successful tests and artifact validation.
 The compact index is downloaded as a single bounded file, not an unbounded raw
 archive; further index sharding can be evaluated as the archive grows.
+
+## Installable PWA implementation — issue #5 (2026-11-27)
+
+The production-only Angular service worker caches the **app shell**, with icons
+lazily cached, while public catalog paths use **bounded network-first** data
+groups. The catalog pointer (manifest) has a 1-hour maximum cache age and the
+search/partition/item family uses a 120-entry LRU cache with a 1-day maximum
+age; both retry the live network first with a five-second timeout before
+falling back to previously cached content. The UI explicitly warns when
+offline and never claims an uncached article is available. The installation
+manifest uses the Pages project subpath with hash navigation. Browser-controlled
+service-worker version detection prompts for a full reload rather than
+activating new application code inside the old running session. An unrecoverable
+cache event also requests a reload.
+
+The PNG icons are project-created graphic assets (not publisher logos).
+The release jobs validate their real dimensions and check the emitted
+ngsw.json, worker, icon assets, and configured catalog cache strategy.
+Run `npm run test:pwa` to validate configuration without a browser. The
+Angular unit tests cover update, unrecoverable and online/offline UI events.
+Actual install prompts, WebKit/Chrome installation, physical devices,
+deployed Pages configuration, offline navigation and viewport behavior
+must still be checked in browsers before claiming that production installability
+or accessible behavior is proven. Browser HTTP "online" status is only a
+connectivity hint; a failed network request still displays the retry UI.
