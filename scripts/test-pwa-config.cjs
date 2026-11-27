@@ -55,7 +55,22 @@ if (dist) {
   const generated = JSON.parse(fs.readFileSync(path.join(prefix, "ngsw.json"), "utf8"));
   assert.equal(generated.dataGroups.length, 2);
   assert(generated.dataGroups.every((group) => group.strategy === "freshness"));
-  assert(generated.dataGroups[0].patterns.some((pattern) => pattern.includes("catalog/manifest")));
-  assert(generated.dataGroups[1].patterns.some((pattern) => pattern.includes("catalog/days")));
+  const matches = (group, url) =>
+    group.patterns.some((pattern) => new RegExp(pattern).test(url));
+  assert(
+    matches(generated.dataGroups[0], "/NewsAggregator/catalog/manifest.json"),
+    "Manifest must match the generated Pages URL pattern",
+  );
+  for (const url of [
+    "/NewsAggregator/catalog/search.json",
+    "/NewsAggregator/catalog/days/2026-11-18/0.json",
+    "/NewsAggregator/catalog/metadata/example-1.json",
+    "/NewsAggregator/catalog/items/example-1.json",
+  ]) {
+    assert(
+      matches(generated.dataGroups[1], url),
+      "News URL must match the network-first Pages cache group: " + url,
+    );
+  }
 }
 console.log("PWA manifest, bounded cache policy and production artifacts validated");
