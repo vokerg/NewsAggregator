@@ -6,11 +6,7 @@
       "name": "app-shell",
       "installMode": "prefetch",
       "resources": {
-        "files": [
-          "/index.html",
-          "/*.css",
-          "/*.js"
-        ]
+        "files": ["/index.html", "/*.css", "/*.js"]
       }
     },
     {
@@ -18,20 +14,14 @@
       "installMode": "lazy",
       "updateMode": "prefetch",
       "resources": {
-        "files": [
-          "/manifest.webmanifest",
-          "/favicon.svg",
-          "/icons/*.png"
-        ]
+        "files": ["/manifest.webmanifest", "/favicon.svg", "/icons/*.png"]
       }
     }
   ],
   "dataGroups": [
     {
       "name": "catalog-pointer",
-      "urls": [
-        "/catalog/manifest.json"
-      ],
+      "urls": ["/catalog/manifest.json"],
       "cacheConfig": {
         "strategy": "freshness",
         "maxSize": 1,
